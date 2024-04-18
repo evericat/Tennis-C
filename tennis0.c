@@ -324,7 +324,7 @@ void mou_paleta_ordinador(void)
 int main(int n_args, const char *ll_args[])
 {
   int tec, cont;		/* variables locals */
-
+  
   if ((n_args != 3) && (n_args !=4))
   {	fprintf(stderr,"Comanda: tennis0 fit_param moviments [retard]\n");
   	exit(1);
