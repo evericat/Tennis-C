@@ -71,17 +71,16 @@
 #define MAX_VEL 1.0
 #define MIN_RET 0.0
 #define MAX_RET 5.0
-
+#define NUMMAXPALETAS 9
 
 /* variables globals */
 int n_fil, n_col, m_por;	/* dimensions del taulell i porteries */
 int l_pal;			/* longitud de les paletes */
-float v_pal;			/* velocitat de la paleta del programa */
-float pal_ret;			/* percentatge de retard de la paleta */
+
 
 int ipu_pf, ipu_pc;      	/* posicio del la paleta d'usuari */
-int ipo_pf, ipo_pc;      	/* posicio del la paleta de l'ordinador */
-float po_pf;	/* pos. vertical de la paleta de l'ordinador, en valor real */
+
+
 
 int ipil_pf, ipil_pc;		/* posicio de la pilota, en valor enter */
 float pil_pf, pil_pc;		/* posicio de la pilota, en valor real */
@@ -93,6 +92,18 @@ int moviments;		/* numero max de moviments paletes per acabar el joc */
 
 int tec; // Tecla que pulsa el usuari
 int cont = -1; // Contador actual.
+int n_pal = 0;
+
+
+typedef struct {
+    int ipo_pf, ipo_pc;      	/* posicio del la paleta de l'ordinador */
+    float v_pal;			/* velocitat de la paleta del programa */
+    float pal_ret;			/* percentatge de retard de la paleta */
+    float po_pf;	/* pos. vertical de la paleta de l'ordinador, en valor real */
+} Fila;
+
+Fila matrizPaletas[NUMMAXPALETAS];
+
 
 
 /* funcio per realitzar la carrega dels parametres de joc emmagatzemats */
@@ -102,6 +113,10 @@ int cont = -1; // Contador actual.
 /* tinent al SO (segons comentaris del principi del programa).		*/
 void carrega_parametres(const char *nom_fit)
 {
+    int ipo_pf, ipo_pc;      	/* posicio del la paleta de l'ordinador */
+    float v_pal;			/* velocitat de la paleta del programa */
+    float pal_ret;			/* percentatge de retard de la paleta */
+    float po_pf;	/* pos. vertical de la paleta de l'ordinador, en valor real */
   FILE *fit;
 
   fit = fopen(nom_fit,"rt");		/* intenta obrir fitxer */
@@ -141,20 +156,28 @@ void carrega_parametres(const char *nom_fit)
 	exit(4);
   }
 
-  if (!feof(fit)) fscanf(fit,"%d %d %f %f\n",&ipo_pf,&ipo_pc,&v_pal,&pal_ret);
-  if ((ipo_pf < 1) || (ipo_pf+l_pal > n_fil-2) ||
-	(ipo_pc < 5) || (ipo_pc > n_col-2) ||
-	(v_pal < MIN_VEL) || (v_pal > MAX_VEL) ||
-	(pal_ret < MIN_RET) || (pal_ret > MAX_RET))
-    {
-	fprintf(stderr,"Error: parametres paleta ordinador incorrectes:\n");
-	fprintf(stderr,"\t1 =< ipo_pf (%d) =< n_fil-l_pal-3 (%d)\n",ipo_pf,(n_fil-l_pal-3));
-	fprintf(stderr,"\t5 =< ipo_pc (%d) =< n_col-2 (%d)\n",ipo_pc,(n_col-2));
-	fprintf(stderr,"\t%.1f =< v_pal (%.1f) =< %.1f\n",MIN_VEL,v_pal,MAX_VEL);
-	fprintf(stderr,"\t%.1f =< pal_ret (%.1f) =< %.1f\n",MIN_RET,pal_ret,MAX_RET);
-	fclose(fit);
-	exit(5);
-    }
+  
+  while(!feof(fit)) {
+    fscanf(fit,"%d %d %f %f\n",&ipo_pf,&ipo_pc,&v_pal,&pal_ret);
+    if ((ipo_pf < 1) || (ipo_pf+l_pal > n_fil-2) ||
+    (ipo_pc < 5) || (ipo_pc > n_col-2) ||
+    (v_pal < MIN_VEL) || (v_pal > MAX_VEL) ||
+    (pal_ret < MIN_RET) || (pal_ret > MAX_RET))
+      {
+    fprintf(stderr,"Error: parametres paleta ordinador incorrectes:\n");
+    fprintf(stderr,"\t1 =< ipo_pf (%d) =< n_fil-l_pal-3 (%d)\n",ipo_pf,(n_fil-l_pal-3));
+    fprintf(stderr,"\t5 =< ipo_pc (%d) =< n_col-2 (%d)\n",ipo_pc,(n_col-2));
+    fprintf(stderr,"\t%.1f =< v_pal (%.1f) =< %.1f\n",MIN_VEL,v_pal,MAX_VEL);
+    fprintf(stderr,"\t%.1f =< pal_ret (%.1f) =< %.1f\n",MIN_RET,pal_ret,MAX_RET);
+    fclose(fit);
+    exit(5);
+      }
+      matrizPaletas[n_pal].ipo_pf = ipo_pf;
+      matrizPaletas[n_pal].ipo_pc = ipo_pc;
+      matrizPaletas[n_pal].v_pal = v_pal;
+      matrizPaletas[n_pal].pal_ret = pal_ret;
+      n_pal++;
+  }
   fclose(fit);			/* fitxer carregat: tot OK! */
 }
 
@@ -194,11 +217,17 @@ int inicialitza_joc(void)
 
   ipu_pf = n_fil/2; ipu_pc = 3;		/* inicialitzar pos. paletes */
   if (ipu_pf+l_pal >= n_fil-3) ipu_pf = 1;
-  for (i=0; i< l_pal; i++)	    /* dibuixar paleta inicialment */
-  {	win_escricar(ipu_pf +i, ipu_pc, '0',INVERS);
-	win_escricar(ipo_pf +i, ipo_pc, '1',INVERS);
+  for (size_t k = 0; i < n_pal; i++)
+  {
+    for (i=0; i< l_pal; i++)	    /* dibuixar paleta inicialment */
+    {	
+      win_escricar(ipu_pf +i, ipu_pc, '0',INVERS);
+	    win_escricar(matrizPaletas[k].ipo_pf +i, matrizPaletas[k].ipo_pc, '1',INVERS);
+    }
+    matrizPaletas[k].po_pf = matrizPaletas[k].ipo_pf;		/* fixar valor real paleta ordinador */
   }
-  po_pf = ipo_pf;		/* fixar valor real paleta ordinador */
+  
+  
 
   pil_pf = ipil_pf; pil_pc = ipil_pc;	/* fixar valor real posicio pilota */
   win_escricar(ipil_pf, ipil_pc, '.',INVERS);	/* dibuix inicial pilota */
@@ -307,43 +336,38 @@ void *mou_paleta_ordinador(void *index) {
  /* char rh,rv,rd; */
   while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1)) {
     win_retard(retard);
-    f_h = po_pf + v_pal;		/* posicio hipotetica de la paleta */
-    if (f_h != ipo_pf)	/* si pos. hipotetica no coincideix amb pos. actual */
+    f_h =matrizPaletas[*(int*)index].po_pf + matrizPaletas[*(int*)index].v_pal;		/* posicio hipotetica de la paleta */
+    if (f_h != matrizPaletas[*(int*)index].ipo_pf)	/* si pos. hipotetica no coincideix amb pos. actual */
     {
-      if (v_pal > 0.0)			/* verificar moviment cap avall */
+      if (matrizPaletas[*(int*)index].v_pal > 0.0)			/* verificar moviment cap avall */
       {
-    if (win_quincar(f_h+l_pal-1,ipo_pc) == ' ')   /* si no hi ha obstacle */
+    if (win_quincar(f_h+l_pal-1,matrizPaletas[*(int*)index].ipo_pc) == ' ')   /* si no hi ha obstacle */
     {
-      win_escricar(ipo_pf,ipo_pc,' ',NO_INV);      /* esborra primer bloc */
-      po_pf += v_pal; ipo_pf = po_pf;		/* actualitza posicio */
-      win_escricar(ipo_pf+l_pal-1,ipo_pc,'1',INVERS); /* impr. ultim bloc */
+      win_escricar(matrizPaletas[*(int*)index].ipo_pf,matrizPaletas[*(int*)index].ipo_pc,' ',NO_INV);      /* esborra primer bloc */
+      matrizPaletas[*(int*)index].po_pf += matrizPaletas[*(int*)index].v_pal; matrizPaletas[*(int*)index].ipo_pf = matrizPaletas[*(int*)index].po_pf;		/* actualitza posicio */
+      win_escricar(matrizPaletas[*(int*)index].ipo_pf+l_pal-1,matrizPaletas[*(int*)index].ipo_pc,'1',INVERS); /* impr. ultim bloc */
             if (moviments > 0) moviments--;    /* he fet un moviment de la paleta */
     }
     else		/* si hi ha obstacle, canvia el sentit del moviment */
-      v_pal = -v_pal;
+      matrizPaletas[*(int*)index].v_pal = -matrizPaletas[*(int*)index].v_pal;
       }
       else			/* verificar moviment cap amunt */
       {
-    if (win_quincar(f_h,ipo_pc) == ' ')        /* si no hi ha obstacle */
+    if (win_quincar(f_h,matrizPaletas[*(int*)index].ipo_pc) == ' ')        /* si no hi ha obstacle */
     {
-      win_escricar(ipo_pf+l_pal-1,ipo_pc,' ',NO_INV); /* esbo. ultim bloc */
-      po_pf += v_pal; ipo_pf = po_pf;		/* actualitza posicio */
-      win_escricar(ipo_pf,ipo_pc,'1',INVERS);	/* impr. primer bloc */
+      win_escricar(matrizPaletas[*(int*)index].ipo_pf+l_pal-1,matrizPaletas[*(int*)index].ipo_pc,' ',NO_INV); /* esbo. ultim bloc */
+      matrizPaletas[*(int*)index].po_pf += matrizPaletas[*(int*)index].v_pal; matrizPaletas[*(int*)index].ipo_pf = matrizPaletas[*(int*)index].po_pf;		/* actualitza posicio */
+      win_escricar(matrizPaletas[*(int*)index].ipo_pf,matrizPaletas[*(int*)index].ipo_pc,'1',INVERS);	/* impr. primer bloc */
             if (moviments > 0) moviments--;    /* he fet un moviment de la paleta */
     }
     else		/* si hi ha obstacle, canvia el sentit del moviment */
-      v_pal = -v_pal;
+      matrizPaletas[*(int*)index].v_pal = -matrizPaletas[*(int*)index].v_pal;
       }
     }
-    else po_pf += v_pal; 	/* actualitza posicio vertical real de la paleta */
+    else matrizPaletas[*(int*)index].po_pf += matrizPaletas[*(int*)index].v_pal; 	/* actualitza posicio vertical real de la paleta */
   }
   return NULL;
 }
-
-/* funcio per moure la paleta de l'usuari en funcio de la tecla premuda */
-
-
-
 
 /* programa principal				    */
 int main(int n_args, const char *ll_args[])
@@ -372,11 +396,31 @@ int main(int n_args, const char *ll_args[])
   } while ((tec != TEC_RETURN) && (cont==-1) && ((moviments > 0) || moviments == -1));*/
 
   pthread_t thread_pilota, thread_paleta_usuari, thread_paleta_ordinador;
+    
+      /*for (int i = 0; i < n_pal; i++) {
+        printf("Paleta %d:\n", i);
+        printf("Posición fila: %d\n", matrizPaletas[i].ipo_pf);
+        printf("Posición columna: %d\n", matrizPaletas[i].ipo_pc);
+        printf("Velocidad: %.1f\n", matrizPaletas[i].v_pal);
+        printf("Retardo: %.1f\n", matrizPaletas[i].pal_ret);
+        printf("Posición real: %.1f\n", matrizPaletas[i].po_pf);
+        printf("\n");
+      }*/
+      
+    
 
+    // Llamada a la función para mostrar la matriz de paletas
+    //mostrar_matrizPaletas(NULL);
     // Crear els fils
     pthread_create(&thread_pilota, NULL, moure_pilota, NULL);
     pthread_create(&thread_paleta_usuari, NULL, mou_paleta_usuari, NULL);
-    pthread_create(&thread_paleta_ordinador, NULL, mou_paleta_ordinador, NULL);
+
+    pthread_t threads_pal_ordinador[n_pal];
+    
+    for (size_t i = 0; i < 1; i++)
+    {
+     pthread_create(&threads_pal_ordinador[i], NULL, mou_paleta_ordinador, &i); 
+    }
 
     // Esperar que els fils acabin
     pthread_join(thread_paleta_usuari, NULL);
