@@ -269,8 +269,9 @@ void * moure_pilota(void * cap) {
       }
     }
     else { pil_pf += pil_vf; pil_pc += pil_vc; }
+    cont = result; // Actualitzem la informació de la pilota.
   }
-  cont = result;
+  
 }
 
 
