@@ -60,6 +60,7 @@
 #include <stdlib.h>
 #include "winsuport.h"		/* incloure definicions de funcions propies */
 #include <pthread.h> // llibreria pthread.
+#include <time.h> // Llibreria per al time del joc
 
 
 #define MIN_FIL 7		/* definir limits de variables globals */
@@ -89,6 +90,7 @@ float pil_ret;			/* percentatge de retard de la pilota */
 
 int retard;		/* valor del retard de moviment, en mil.lisegons */
 int moviments;		/* numero max de moviments paletes per acabar el joc */
+int moviments_inicials; /* Numero de moviments inicials del joc, per fer calculs.*/
 
 int tec; // Tecla que pulsa el usuari
 int cont = -1; // Contador actual.
@@ -325,7 +327,7 @@ void * mou_paleta_usuari(void * cap) {
               win_escristr("ARA HAURIA D'ATURAR ELS ELEMENTS DEL JOC");
           }
         }
-        win_retard(retard);
+        //win_retard(retard);
     }
     return NULL;
 }
@@ -369,16 +371,31 @@ void *mou_paleta_ordinador(void *index) {
   return NULL;
 }
 
+void *time_moviments() {
+    time_t start_time = time(NULL);
+    while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1)) {
+      printf("%d\n", moviments_inicials - moviments);
+      time_t current_time = time(NULL);
+      time_t elapsed_time = current_time - start_time;
+      int minutes = elapsed_time / 60;
+      int seconds = elapsed_time % 60;
+      printf("Time: %d min %d sec\n", minutes, seconds);
+      win_retard(1000);
+    }
+    return NULL;
+}
+
 /* programa principal				    */
 int main(int n_args, const char *ll_args[])
 {
-
+  
   if ((n_args != 3) && (n_args !=4))
   {	fprintf(stderr,"Comanda: tennis0 fit_param moviments [retard]\n");
   	exit(1);
   }
   carrega_parametres(ll_args[1]);
   moviments=atoi(ll_args[2]);
+  moviments_inicials = moviments;
 
   if (n_args == 4) retard = atoi(ll_args[3]);
   else retard = 100;
@@ -395,7 +412,7 @@ int main(int n_args, const char *ll_args[])
 	win_retard(retard);
   } while ((tec != TEC_RETURN) && (cont==-1) && ((moviments > 0) || moviments == -1));*/
 
-  pthread_t thread_pilota, thread_paleta_usuari;
+  pthread_t thread_pilota, thread_paleta_usuari, thread_time_moviments;
     
       /*for (int i = 0; i < n_pal; i++) {
         printf("Paleta %d:\n", i);
@@ -414,8 +431,10 @@ int main(int n_args, const char *ll_args[])
     // Crear els fils
     pthread_create(&thread_pilota, NULL, moure_pilota, NULL);
     pthread_create(&thread_paleta_usuari, NULL, mou_paleta_usuari, NULL);
+    pthread_create(&thread_time_moviments, NULL, time_moviments, NULL);
+    
     pthread_t threads_pal_ordinador[n_pal];
-    //pthread_create(&threads_pal_ordinador[index], NULL, mou_paleta_ordinador, &index);
+    
     for (int i = 0; i < n_pal; i++)
     {
       int *arg = malloc(sizeof(*arg)); // Creem un espai de memoria per allojar el index.
@@ -435,6 +454,7 @@ int main(int n_args, const char *ll_args[])
      pthread_join(threads_pal_ordinador[i], NULL); // Esperem que acaben tots els threads.
     }
     pthread_join(thread_pilota, NULL);
+    pthread_join(thread_time_moviments, NULL);
   win_fi();
 
   if (tec == TEC_RETURN) printf("S'ha aturat el joc amb la tecla RETURN!\n");
