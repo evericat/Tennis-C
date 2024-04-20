@@ -377,9 +377,9 @@ void *time_moviments() {
       printf("%d\n", moviments_inicials - moviments);
       time_t current_time = time(NULL);
       time_t elapsed_time = current_time - start_time;
-      int minutes = elapsed_time / 60;
-      int seconds = elapsed_time % 60;
-      printf("Time: %d min %d sec\n", minutes, seconds);
+      int minuts = elapsed_time / 60;
+      int segons = elapsed_time % 60;
+      printf("Time: %d min %d sec\n", minuts, segons);
       win_retard(1000);
     }
     return NULL;
