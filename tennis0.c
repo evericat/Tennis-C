@@ -116,7 +116,6 @@ void carrega_parametres(const char *nom_fit)
     int ipo_pf, ipo_pc;      	/* posicio del la paleta de l'ordinador */
     float v_pal;			/* velocitat de la paleta del programa */
     float pal_ret;			/* percentatge de retard de la paleta */
-    float po_pf;	/* pos. vertical de la paleta de l'ordinador, en valor real */
   FILE *fit;
 
   fit = fopen(nom_fit,"rt");		/* intenta obrir fitxer */
@@ -366,6 +365,7 @@ void *mou_paleta_ordinador(void *index) {
     }
     else matrizPaletas[*(int*)index].po_pf += matrizPaletas[*(int*)index].v_pal; 	/* actualitza posicio vertical real de la paleta */
   }
+  free(index); // Liberem la memoria de la variable index.
   return NULL;
 }
 
@@ -395,7 +395,7 @@ int main(int n_args, const char *ll_args[])
 	win_retard(retard);
   } while ((tec != TEC_RETURN) && (cont==-1) && ((moviments > 0) || moviments == -1));*/
 
-  pthread_t thread_pilota, thread_paleta_usuari, thread_paleta_ordinador;
+  pthread_t thread_pilota, thread_paleta_usuari;
     
       /*for (int i = 0; i < n_pal; i++) {
         printf("Paleta %d:\n", i);
@@ -414,17 +414,26 @@ int main(int n_args, const char *ll_args[])
     // Crear els fils
     pthread_create(&thread_pilota, NULL, moure_pilota, NULL);
     pthread_create(&thread_paleta_usuari, NULL, mou_paleta_usuari, NULL);
-
     pthread_t threads_pal_ordinador[n_pal];
-    
-    for (size_t i = 0; i < 1; i++)
+    //pthread_create(&threads_pal_ordinador[index], NULL, mou_paleta_ordinador, &index);
+    for (int i = 0; i < n_pal; i++)
     {
-     pthread_create(&threads_pal_ordinador[i], NULL, mou_paleta_ordinador, &i); 
+      int *arg = malloc(sizeof(*arg)); // Creem un espai de memoria per allojar el index.
+      if (arg == NULL) { // Si no es genera, donem errada, i tanquem el joc.
+        fprintf(stderr, "No se ha pogut crear els fils de la paleta del ordinador, error!");
+        exit(EXIT_FAILURE);
+      }
+      *arg = i; // Asignem el index a la memoria creada.
+      pthread_create(&threads_pal_ordinador[i], NULL, mou_paleta_ordinador, arg); // Creem el thread on com argument li pasem el lloc de memoria creat.
     }
+    
 
     // Esperar que els fils acabin
     pthread_join(thread_paleta_usuari, NULL);
-    pthread_join(thread_paleta_ordinador, NULL);
+    for (int i = 0; i < n_pal; i++)
+    {
+     pthread_join(threads_pal_ordinador[i], NULL); // Esperem que acaben tots els threads.
+    }
     pthread_join(thread_pilota, NULL);
   win_fi();
 
