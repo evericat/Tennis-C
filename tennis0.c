@@ -90,7 +90,10 @@ float pil_ret;			/* percentatge de retard de la pilota */
 
 int retard;		/* valor del retard de moviment, en mil.lisegons */
 int moviments;		/* numero max de moviments paletes per acabar el joc */
-int moviments_inicials; /* Numero de moviments inicials del joc, per fer calculs.*/
+int moviments_inicials; /* Numero 8 75 0.6 1.0
+16 73 0.8 1.0
+2 68 -0.4 1.0
+de moviments inicials del joc, per fer calculs.*/
 
 int tec; // Tecla que pulsa el usuari
 int cont = -1; // Contador actual.
@@ -105,8 +108,6 @@ typedef struct {
 } Fila;
 
 Fila matrizPaletas[NUMMAXPALETAS];
-
-
 
 /* funcio per realitzar la carrega dels parametres de joc emmagatzemats */
 /* dins un fitxer de text, el nom del qual es passa per referencia en   */
@@ -232,10 +233,10 @@ int inicialitza_joc(void)
 
   pil_pf = ipil_pf; pil_pc = ipil_pc;	/* fixar valor real posicio pilota */
   win_escricar(ipil_pf, ipil_pc, '.',INVERS);	/* dibuix inicial pilota */
-
+  /*
   sprintf(strin,"Tecles: \'%c\'-> amunt, \'%c\'-> avall, RETURN-> sortir.",
 		TEC_AMUNT, TEC_AVALL);
-  win_escristr(strin);
+  win_escristr(strin);*/
   return(0);
 }
 
@@ -372,14 +373,17 @@ void *mou_paleta_ordinador(void *index) {
 }
 
 void *time_moviments() {
+    char strin[1024];
     time_t start_time = time(NULL);
     while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1)) {
-      printf("%d\n", moviments_inicials - moviments);
+      //printf("%d", moviments_inicials - moviments);
       time_t current_time = time(NULL);
       time_t elapsed_time = current_time - start_time;
       int minuts = elapsed_time / 60;
       int segons = elapsed_time % 60;
-      printf("Time: %d min %d sec\n", minuts, segons);
+      //printf("Time: %d min %d sec", minuts, segons);
+      sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, M: \'%d\', T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, moviments_inicials - moviments, minuts, segons);
+  win_escristr(strin);
       win_retard(1000);
     }
     return NULL;
