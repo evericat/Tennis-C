@@ -61,6 +61,8 @@
 #include "winsuport.h"		/* incloure definicions de funcions propies */
 #include <pthread.h> // llibreria pthread.
 #include <time.h> // Llibreria per al time del joc
+#include <semaphore.h> // Llibreria per als semafors i sincronització dels threads. 
+
 
 
 #define MIN_FIL 7		/* definir limits de variables globals */
@@ -72,7 +74,7 @@
 #define MAX_VEL 1.0
 #define MIN_RET 0.0
 #define MAX_RET 5.0
-#define NUMMAXPALETAS 9
+#define NUMMAXPALETAS 9 // Número màxim de paletes que es poden crear.
 
 /* variables globals */
 int n_fil, n_col, m_por;	/* dimensions del taulell i porteries */
@@ -108,6 +110,8 @@ typedef struct {
 } Fila;
 
 Fila matrizPaletas[NUMMAXPALETAS];
+int num_threads;
+sem_t *sems;// Matriu de semafors
 
 /* funcio per realitzar la carrega dels parametres de joc emmagatzemats */
 /* dins un fitxer de text, el nom del qual es passa per referencia en   */
@@ -228,9 +232,6 @@ int inicialitza_joc(void)
     }
     matrizPaletas[k].po_pf = matrizPaletas[k].ipo_pf;		/* fixar valor real paleta ordinador */
   }
-  
-  
-
   pil_pf = ipil_pf; pil_pc = ipil_pc;	/* fixar valor real posicio pilota */
   win_escricar(ipil_pf, ipil_pc, '.',INVERS);	/* dibuix inicial pilota */
   /*
@@ -289,25 +290,26 @@ void * moure_pilota(void * cap) {
         }
       }
       if (win_quincar(f_h, c_h) == ' ')    /* verificar posicio definitiva */
-      {                                   /* si no hi ha obstacle */
+      {
+        sem_wait(&sems[0]); // Esperem a que el semafor estigui lliure.                                   /* si no hi ha obstacle */
         win_escricar(ipil_pf, ipil_pc, ' ', NO_INV);    /* esborra pilota */
         pil_pf += pil_vf; pil_pc += pil_vc;
         ipil_pf = f_h; ipil_pc = c_h;       /* actualitza posicio actual */
         if ((ipil_pc > 0) && (ipil_pc <= n_col))    /* si no surt */
           win_escricar(ipil_pf, ipil_pc, '.', INVERS); /* imprimeix pilota */
-        else
-          result = ipil_pc;    /* codi de finalitzacio de partida */
+        else result = ipil_pc;    /* codi de finalitzacio de partida */
+        sem_post(&sems[(0 + 1)]); // Alliberem el semafor.
       }
     }
     else { pil_pf += pil_vf; pil_pc += pil_vc; }
     cont = result; // Actualitzem la informació de la pilota.
   }
-  
 }
 
 
 void * mou_paleta_usuari(void * cap) {
     while(1 && tec != TEC_RETURN && cont == -1 && (moviments > 0 || moviments == -1)) {
+        sem_wait(&sems[1]); // Esperem a que el semafor estigui lliure.
         tec = win_gettec();
         if (tec != 0) {
           if ((tec == TEC_AVALL) && (win_quincar(ipu_pf+l_pal,ipu_pc) == ' '))
@@ -328,17 +330,19 @@ void * mou_paleta_usuari(void * cap) {
               win_escristr("ARA HAURIA D'ATURAR ELS ELEMENTS DEL JOC");
           }
         }
-        //win_retard(retard);
+        sem_post(&sems[(1 + 1)]); // Alliberem el semafor.
     }
     return NULL;
 }
 /* funcio per moure la paleta de l'ordinador; la paleta es mou en funcio del retard*/
 void *mou_paleta_ordinador(void *index) {
   int f_h;
+  int index_semafor = *(int*)index+3;
  /* char rh,rv,rd; */
   while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1)) {
-    win_retard(retard);
+    sem_wait(&sems[index_semafor]);
     f_h =matrizPaletas[*(int*)index].po_pf + matrizPaletas[*(int*)index].v_pal;		/* posicio hipotetica de la paleta */
+    
     if (f_h != matrizPaletas[*(int*)index].ipo_pf)	/* si pos. hipotetica no coincideix amb pos. actual */
     {
       if (matrizPaletas[*(int*)index].v_pal > 0.0)			/* verificar moviment cap avall */
@@ -355,7 +359,7 @@ void *mou_paleta_ordinador(void *index) {
       }
       else			/* verificar moviment cap amunt */
       {
-    if (win_quincar(f_h,matrizPaletas[*(int*)index].ipo_pc) == ' ')        /* si no hi ha obstacle */
+    if (f_h > 0 && win_quincar(f_h,matrizPaletas[*(int*)index].ipo_pc) == ' ')        /* si no hi ha obstacle */
     {
       win_escricar(matrizPaletas[*(int*)index].ipo_pf+l_pal-1,matrizPaletas[*(int*)index].ipo_pc,' ',NO_INV); /* esbo. ultim bloc */
       matrizPaletas[*(int*)index].po_pf += matrizPaletas[*(int*)index].v_pal; matrizPaletas[*(int*)index].ipo_pf = matrizPaletas[*(int*)index].po_pf;		/* actualitza posicio */
@@ -365,8 +369,13 @@ void *mou_paleta_ordinador(void *index) {
     else		/* si hi ha obstacle, canvia el sentit del moviment */
       matrizPaletas[*(int*)index].v_pal = -matrizPaletas[*(int*)index].v_pal;
       }
+    } else matrizPaletas[*(int*)index].po_pf += matrizPaletas[*(int*)index].v_pal; 	/* actualitza posicio vertical real de la paleta */
+    
+    if (index_semafor < num_threads-1) {
+      sem_post(&sems[index_semafor+1]); // Alliberem el semafor.
+    } else {
+      sem_post(&sems[0]); // Alliberem el semafor.
     }
-    else matrizPaletas[*(int*)index].po_pf += matrizPaletas[*(int*)index].v_pal; 	/* actualitza posicio vertical real de la paleta */
   }
   free(index); // Liberem la memoria de la variable index.
   return NULL;
@@ -376,15 +385,14 @@ void *time_moviments() {
     char strin[1024];
     time_t start_time = time(NULL);
     while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1)) {
-      //printf("%d", moviments_inicials - moviments);
       time_t current_time = time(NULL);
       time_t elapsed_time = current_time - start_time;
       int minuts = elapsed_time / 60;
       int segons = elapsed_time % 60;
-      //printf("Time: %d min %d sec", minuts, segons);
       sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, M: \'%d\', T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, moviments_inicials - moviments, minuts, segons);
-  win_escristr(strin);
-      win_retard(1000);
+      sem_wait(&sems[2]); // Esperem a que el semafor estigui lliure.
+      win_escristr(strin);
+      sem_post(&sems[(2 + 1)]); // Alliberem el semafor.
     }
     return NULL;
 }
@@ -416,26 +424,22 @@ int main(int n_args, const char *ll_args[])
 	win_retard(retard);
   } while ((tec != TEC_RETURN) && (cont==-1) && ((moviments > 0) || moviments == -1));*/
 
-  pthread_t thread_pilota, thread_paleta_usuari, thread_time_moviments;
+    pthread_t thread_pilota, thread_paleta_usuari, thread_time_moviments;
+    num_threads = n_pal + 3;
+    sems = malloc(num_threads * sizeof(sem_t));
+    // Inicialitzar els semafors
+    for (size_t i = 0; i < n_pal+3; i++)
+    { 
+       // Inicialitza un semafor amb un valor inicial de 1 per al primer semafor, i de 0 per a la resta de semafors. 
+      sem_init(&sems[i], 0, i == 0 ? 1 : 0);
+    }
     
-      /*for (int i = 0; i < n_pal; i++) {
-        printf("Paleta %d:\n", i);
-        printf("Posición fila: %d\n", matrizPaletas[i].ipo_pf);
-        printf("Posición columna: %d\n", matrizPaletas[i].ipo_pc);
-        printf("Velocidad: %.1f\n", matrizPaletas[i].v_pal);
-        printf("Retardo: %.1f\n", matrizPaletas[i].pal_ret);
-        printf("Posición real: %.1f\n", matrizPaletas[i].po_pf);
-        printf("\n");
-      }*/
-      
-    
-
-    // Llamada a la función para mostrar la matriz de paletas
-    //mostrar_matrizPaletas(NULL);
     // Crear els fils
+    
     pthread_create(&thread_pilota, NULL, moure_pilota, NULL);
     pthread_create(&thread_paleta_usuari, NULL, mou_paleta_usuari, NULL);
     pthread_create(&thread_time_moviments, NULL, time_moviments, NULL);
+    
     
     pthread_t threads_pal_ordinador[n_pal];
     
@@ -459,6 +463,13 @@ int main(int n_args, const char *ll_args[])
     }
     pthread_join(thread_pilota, NULL);
     pthread_join(thread_time_moviments, NULL);
+
+    // Alliberar els semafors
+    for (size_t i = 0; i < n_pal+3; i++)
+    {
+      sem_destroy(&sems[i]); // Alliberem la memoria dels semafors.
+    }
+    
   win_fi();
 
   if (tec == TEC_RETURN) printf("S'ha aturat el joc amb la tecla RETURN!\n");
