@@ -188,6 +188,7 @@ void carrega_parametres(const char *nom_fit)
 int inicialitza_joc(void)
 {
   int i, i_port, f_port, retwin;
+  char strin[51];
 
   retwin = win_ini(&n_fil,&n_col,'+',INVERS);   /* intenta crear taulell */
 
@@ -301,7 +302,7 @@ void * moure_pilota(void * cap) {
     else { pil_pf += pil_vf; pil_pc += pil_vc; }
     cont = result; // Actualitzem la informació de la pilota.
   }
-  return NULL;
+  
 }
 
 
