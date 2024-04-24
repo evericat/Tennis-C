@@ -458,7 +458,7 @@ void *mou_paleta_ordinador(void *index) {
   return NULL;
 }
 
-void *time_moviments() {
+void *mostra_informacio() {
     char strin[1024];
     time_t start_time = time(NULL);
     while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1 || moviments_infinits == 1)) {
@@ -523,7 +523,7 @@ int main(int n_args, const char *ll_args[])
     // Crear els fils
     pthread_create(&thread_pilota, NULL, moure_pilota, NULL);
     pthread_create(&thread_paleta_usuari, NULL, mou_paleta_usuari, NULL);
-    pthread_create(&thread_time_moviments, NULL, time_moviments, NULL);
+    pthread_create(&thread_time_moviments, NULL, mostra_informacio, NULL);
     
     pthread_t threads_pal_ordinador[n_pal];
     for (size_t i = 0; i < n_pal; i++)
@@ -551,8 +551,9 @@ int main(int n_args, const char *ll_args[])
      pthread_join(threads_pal_ordinador[i], NULL); // Esperem que acaben tots els threads.
     }
     pthread_join(thread_pilota, NULL);
-    //pthread_join(thread_time_moviments, NULL);
+    pthread_join(thread_time_moviments, NULL);
 
+    // Destruim el semafor
     pthread_mutex_destroy(&sem); // Destruim el semafor.
   win_fi();
 
