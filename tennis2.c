@@ -90,10 +90,8 @@ float pil_ret;			/* percentatge de retard de la pilota */
 
 int retard;		/* valor del retard de moviment, en mil.lisegons */
 int moviments;		/* numero max de moviments paletes per acabar el joc */
-int moviments_inicials; /* Numero 8 75 0.6 1.0
-16 73 0.8 1.0
-2 68 -0.4 1.0
-de moviments inicials del joc, per fer calculs.*/
+int moviments_inicials; /* Numero de moviments inicials, util per fer calculs*/
+int moviments_infinits; /* Es una variable booleana, on indica si els moviments son infinits o no*/
 
 int tec; // Tecla que pulsa el usuari
 int cont = -1; // Contador actual.
@@ -107,7 +105,8 @@ typedef struct {
     float po_pf;	/* pos. vertical de la paleta de l'ordinador, en valor real */
 } Fila;
 
-Fila matrizPaletas[NUMMAXPALETAS];
+Fila matrizPaletas[NUMMAXPALETAS]; // Matriz con la informacion de cada paleta en cada fila. 
+int matrizMovimientosPaletas[NUMMAXPALETAS]; // Matriz donde se guarda el numero de movimientos hechos. 
 
 pthread_mutex_t sem = PTHREAD_MUTEX_INITIALIZER;
 
@@ -253,7 +252,7 @@ int inicialitza_joc(void)
 void * moure_pilota(void * cap) {
   int f_h, c_h, result;
   char rh, rv, rd, pd;
-  while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1))
+  while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1 || moviments_infinits == 1))
   {
     /**
       * Per no posar sempre el mateix comentari: 
@@ -335,7 +334,7 @@ void * moure_pilota(void * cap) {
 
 
 void * mou_paleta_usuari(void * cap) {
-    while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1)) {
+    while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1 || moviments_infinits == 1)) {
         /**
          * Per no posar sempre el mateix comentari: 
          * pthread_mutex_lock(&sem); // Bloqueja el semafor
@@ -377,8 +376,8 @@ void * mou_paleta_usuari(void * cap) {
           }
           pthread_mutex_unlock(&sem);
           if (tec == TEC_ESPAI) {
-              win_escristr("ARA HAURIA D'ATURAR ELS ELEMENTS DEL JOC");
               pthread_mutex_lock(&sem);
+              win_escristr("==== PAUSA ====");
               tec = 0; 
               while (tec != TEC_ESPAI) {
                 tec = win_gettec();
@@ -393,7 +392,7 @@ void * mou_paleta_usuari(void * cap) {
 void *mou_paleta_ordinador(void *index) {
   int f_h;
  /* char rh,rv,rd; */
-  while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1)) {
+  while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1 || moviments_infinits == 1)) {
     /**
       * Per no posar sempre el mateix comentari: 
       * pthread_mutex_lock(&sem); // Bloqueja el semafor
@@ -416,7 +415,10 @@ void *mou_paleta_ordinador(void *index) {
           matrizPaletas[*(int*)index].po_pf += matrizPaletas[*(int*)index].v_pal; matrizPaletas[*(int*)index].ipo_pf = matrizPaletas[*(int*)index].po_pf;		/* actualitza posicio */
           pthread_mutex_lock(&sem);
           win_escricar(matrizPaletas[*(int*)index].ipo_pf+l_pal-1,matrizPaletas[*(int*)index].ipo_pc,'1'+*(int*)index,INVERS); /* impr. ultim bloc */
-                if (moviments > 0) moviments--;    /* he fet un moviment de la paleta */
+                if (moviments > 0){
+                  moviments--;    /* he fet un moviment de la paleta */
+                  matrizMovimientosPaletas[*(int*)index]++; // Actualitzem el numero de moviments de la paleta.
+                } 
                 pthread_mutex_unlock(&sem);
         } else {
           /* si hi ha obstacle, canvia el sentit del moviment */
@@ -435,7 +437,10 @@ void *mou_paleta_ordinador(void *index) {
       matrizPaletas[*(int*)index].po_pf += matrizPaletas[*(int*)index].v_pal; matrizPaletas[*(int*)index].ipo_pf = matrizPaletas[*(int*)index].po_pf;		/* actualitza posicio */
       pthread_mutex_lock(&sem);
       win_escricar(matrizPaletas[*(int*)index].ipo_pf,matrizPaletas[*(int*)index].ipo_pc,'1'+*(int*)index,INVERS);	/* impr. primer bloc */
-            if (moviments > 0) moviments--;    /* he fet un moviment de la paleta */
+            if (moviments > 0){
+              moviments--;    /* he fet un moviment de la paleta */
+              matrizMovimientosPaletas[*(int*)index]++; // Actualitzem el numero de moviments de la paleta.
+            }     
             pthread_mutex_unlock(&sem);
     }
     else		/* si hi ha obstacle, canvia el sentit del moviment */
@@ -456,17 +461,24 @@ void *mou_paleta_ordinador(void *index) {
 void *time_moviments() {
     char strin[1024];
     time_t start_time = time(NULL);
-    while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1)) {
+    while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1 || moviments_infinits == 1)) {
       win_retard(retard);
       time_t current_time = time(NULL);
       time_t elapsed_time = current_time - start_time;
       int minuts = elapsed_time / 60;
       int segons = elapsed_time % 60;
-      printf("Time: %d min %d sec", minuts, segons);
-      sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, M: \'%d\', T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, moviments_inicials - moviments, minuts, segons);
-      pthread_mutex_lock(&sem); // Bloquejem el semafor perque anem a escriure en pantalla.
-      win_escristr(strin);
-      pthread_mutex_unlock(&sem); // Desbloquejem el semafor.
+      if(moviments_infinits == 0) {
+        sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, MF: \'%d\', MR: \'%d\' T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, moviments_inicials - moviments, moviments, minuts, segons);
+        pthread_mutex_lock(&sem); // Bloquejem el semafor perque anem a escriure en pantalla.
+        win_escristr(strin);
+        pthread_mutex_unlock(&sem); // Desbloquejem el semafor.
+      } else {
+        sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, MF: \'%d\', MR: INF T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, moviments_inicials - moviments, minuts, segons);
+        pthread_mutex_lock(&sem); // Bloquejem el semafor perque anem a escriure en pantalla.
+        win_escristr(strin);
+        pthread_mutex_unlock(&sem); // Desbloquejem el semafor.
+      }
+      
     }
     return NULL;
 }
@@ -480,11 +492,19 @@ int main(int n_args, const char *ll_args[])
   	exit(1);
   }
   carrega_parametres(ll_args[1]);
-  moviments=atoi(ll_args[2]);
-  moviments_inicials = moviments;
+    moviments=atoi(ll_args[2]);
+    if (moviments == 0) {
+      moviments = __INT_MAX__;
+      moviments_inicials = __INT_MAX__;
+      moviments_infinits = 1;
+    } else {
+      moviments_inicials = moviments;
+      moviments_infinits = 0;
+    }
+     
 
   if (n_args == 4) retard = atoi(ll_args[3]);
-  else retard = 100;
+  else retard = 100; // Si no esta el retard, posem el retard a 100. 
 
   if (inicialitza_joc() !=0)    /* intenta crear el taulell de joc */
      exit(4);   /* aborta si hi ha algun problema amb taulell */
@@ -498,17 +518,20 @@ int main(int n_args, const char *ll_args[])
 	win_retard(retard);
   } while ((tec != TEC_RETURN) && (cont==-1) && ((moviments > 0) || moviments == -1));*/
 
-  pthread_t thread_pilota, thread_paleta_usuari, thread_time_moviments;
-  pthread_mutex_init(&sem, NULL); // Inicialitzem el semafor. 
-    // Llamada a la función para mostrar la matriz de paletas
-    //mostrar_matrizPaletas(NULL);
+    pthread_t thread_pilota, thread_paleta_usuari, thread_time_moviments;
+    pthread_mutex_init(&sem, NULL); // Inicialitzem el semafor. 
     // Crear els fils
     pthread_create(&thread_pilota, NULL, moure_pilota, NULL);
     pthread_create(&thread_paleta_usuari, NULL, mou_paleta_usuari, NULL);
-    //pthread_create(&thread_time_moviments, NULL, time_moviments, NULL);
+    pthread_create(&thread_time_moviments, NULL, time_moviments, NULL);
     
     pthread_t threads_pal_ordinador[n_pal];
+    for (size_t i = 0; i < n_pal; i++)
+    {
+      matrizMovimientosPaletas[i] = 0; // INICIALIZAMOS TODOS LOS MOVIMENTOS A 0.
+    }
     
+
     for (int i = 0; i < n_pal; i++)
     {
       int *arg = malloc(sizeof(*arg)); // Creem un espai de memoria per allojar el index.
@@ -536,5 +559,9 @@ int main(int n_args, const char *ll_args[])
   if (tec == TEC_RETURN) printf("S'ha aturat el joc amb la tecla RETURN!\n");
   else { if (cont == 0 || moviments == 0) printf("Ha guanyat l'ordinador!\n");
          else printf("Ha guanyat l'usuari!\n"); }
+
+  for (int i = 0; i < n_pal; i++) {
+    printf("Moviments de la paleta %d: %d\n", i, matrizMovimientosPaletas[i]);
+  }
   return(0);
 }
