@@ -255,6 +255,12 @@ void * moure_pilota(void * cap) {
   char rh, rv, rd, pd;
   while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1))
   {
+    /**
+      * Per no posar sempre el mateix comentari: 
+      * pthread_mutex_lock(&sem); // Bloqueja el semafor
+      * // Codi que volem protegir
+      * pthread_mutex_unlock(&sem); // Desbloqueja el semafor
+    */
     win_retard(retard);
     f_h = pil_pf + pil_vf;      /* posicio hipotetica de la pilota */
     c_h = pil_pc + pil_vc;
@@ -315,12 +321,14 @@ void * moure_pilota(void * cap) {
         {
           result = ipil_pc;    /* codi de finalitzacio de partida */
         }
-        pthread_mutex_unlock(&sem);
       }
+      pthread_mutex_unlock(&sem); 
     } else { // Si la pilota no es mou, actualitzem la posició de la pilota.
         pil_pf += pil_vf; pil_pc += pil_vc;
     }
+    pthread_mutex_lock(&sem); 
     cont = result; // Actualitzem la informació de la pilota.
+    pthread_mutex_unlock(&sem);
   }
   return NULL;
 }
@@ -328,8 +336,16 @@ void * moure_pilota(void * cap) {
 
 void * mou_paleta_usuari(void * cap) {
     while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1)) {
+        /**
+         * Per no posar sempre el mateix comentari: 
+         * pthread_mutex_lock(&sem); // Bloqueja el semafor
+         * // Codi que volem protegir
+         * pthread_mutex_unlock(&sem); // Desbloqueja el semafor
+        */
         win_retard(retard);
-        tec = win_gettec();
+        pthread_mutex_lock(&sem);
+        tec = win_gettec(); 
+        pthread_mutex_unlock(&sem);
         if (tec != 0) {
           pthread_mutex_lock(&sem);
           if ((tec == TEC_AVALL) && (win_quincar(ipu_pf+l_pal,ipu_pc) == ' '))
@@ -356,8 +372,8 @@ void * mou_paleta_usuari(void * cap) {
               ipu_pf--;					    /* actualitza posicio */
               pthread_mutex_lock(&sem);
               win_escricar(ipu_pf,ipu_pc,'0',INVERS);	    /* imprimeix primer bloc */
-              pthread_mutex_unlock(&sem);
               if (moviments > 0) moviments--;    /* he fet un moviment de la paleta */
+              pthread_mutex_unlock(&sem);
           }
           pthread_mutex_unlock(&sem);
           if (tec == TEC_ESPAI) {
@@ -378,6 +394,12 @@ void *mou_paleta_ordinador(void *index) {
   int f_h;
  /* char rh,rv,rd; */
   while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1)) {
+    /**
+      * Per no posar sempre el mateix comentari: 
+      * pthread_mutex_lock(&sem); // Bloqueja el semafor
+      * // Codi que volem protegir
+      * pthread_mutex_unlock(&sem); // Desbloqueja el semafor
+    */
     win_retard(retard);
     f_h =matrizPaletas[*(int*)index].po_pf + matrizPaletas[*(int*)index].v_pal;		/* posicio hipotetica de la paleta */
     if (f_h != matrizPaletas[*(int*)index].ipo_pf)	/* si pos. hipotetica no coincideix amb pos. actual */
@@ -394,8 +416,8 @@ void *mou_paleta_ordinador(void *index) {
           matrizPaletas[*(int*)index].po_pf += matrizPaletas[*(int*)index].v_pal; matrizPaletas[*(int*)index].ipo_pf = matrizPaletas[*(int*)index].po_pf;		/* actualitza posicio */
           pthread_mutex_lock(&sem);
           win_escricar(matrizPaletas[*(int*)index].ipo_pf+l_pal-1,matrizPaletas[*(int*)index].ipo_pc,'1'+*(int*)index,INVERS); /* impr. ultim bloc */
-          pthread_mutex_unlock(&sem);
                 if (moviments > 0) moviments--;    /* he fet un moviment de la paleta */
+                pthread_mutex_unlock(&sem);
         } else {
           /* si hi ha obstacle, canvia el sentit del moviment */
           pthread_mutex_unlock(&sem);
@@ -413,8 +435,8 @@ void *mou_paleta_ordinador(void *index) {
       matrizPaletas[*(int*)index].po_pf += matrizPaletas[*(int*)index].v_pal; matrizPaletas[*(int*)index].ipo_pf = matrizPaletas[*(int*)index].po_pf;		/* actualitza posicio */
       pthread_mutex_lock(&sem);
       win_escricar(matrizPaletas[*(int*)index].ipo_pf,matrizPaletas[*(int*)index].ipo_pc,'1'+*(int*)index,INVERS);	/* impr. primer bloc */
-      pthread_mutex_unlock(&sem);
             if (moviments > 0) moviments--;    /* he fet un moviment de la paleta */
+            pthread_mutex_unlock(&sem);
     }
     else		/* si hi ha obstacle, canvia el sentit del moviment */
     {
@@ -435,7 +457,6 @@ void *time_moviments() {
     char strin[1024];
     time_t start_time = time(NULL);
     while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1)) {
-      //printf("%d", moviments_inicials - moviments);
       win_retard(retard);
       time_t current_time = time(NULL);
       time_t elapsed_time = current_time - start_time;
