@@ -375,7 +375,7 @@ void * mou_paleta_usuari(void * cap) {
               pthread_mutex_unlock(&sem);
           }
           pthread_mutex_unlock(&sem);
-          if (tec == TEC_ESPAI) {
+          /*if (tec == TEC_ESPAI) {
               pthread_mutex_lock(&sem);
               win_escristr("==== PAUSA ====");
               tec = 0; 
@@ -383,7 +383,7 @@ void * mou_paleta_usuari(void * cap) {
                 tec = win_gettec();
               }
               pthread_mutex_unlock(&sem);
-          }
+          }*/
         }
     }
     return NULL;
@@ -478,7 +478,26 @@ void *mostra_informacio() {
         win_escristr(strin);
         pthread_mutex_unlock(&sem); // Desbloquejem el semafor.
       }
-      
+      if (tec == TEC_ESPAI) {
+              pthread_mutex_lock(&sem);
+              tec = 0; 
+              while (tec != TEC_ESPAI) {
+                win_retard(retard);
+                time_t current_time = time(NULL);
+                time_t elapsed_time = current_time - start_time;
+                int minuts = elapsed_time / 60;
+                int segons = elapsed_time % 60;
+                tec = win_gettec();
+                if(moviments_infinits == 0) {
+                  sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, MF: \'%d\', MR: \'%d\' T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, moviments_inicials - moviments, moviments, minuts, segons);
+                  win_escristr(strin);
+                } else {
+                  sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, MF: \'%d\', MR: INF T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, moviments_inicials - moviments, minuts, segons);
+                  win_escristr(strin);
+                }
+              }
+              pthread_mutex_unlock(&sem);
+      }
     }
     return NULL;
 }
