@@ -3,6 +3,7 @@
 #include "winsuport2.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "memoria.h"
 
 
@@ -11,8 +12,8 @@
 */
 
 int main (int n_args, char *ll_args[]) {
-  if (n_args < 4) {
-    printf("Error en els arguments d'entrada. Exemple d'ús: pal_ord3 0 0 0\n");
+  if (n_args < 5) {
+    printf("Error en els arguments d'entrada. Exemple d'ús: pal_ord3 0 0 0 0\n");
     exit(EXIT_FAILURE);
   }
 
@@ -24,6 +25,8 @@ int main (int n_args, char *ll_args[]) {
       int moviments_infinits;
       int retard;
       int l_pal;
+      int n_fil;
+      int n_col;
     } DadesCompartides;
 
 
@@ -38,19 +41,17 @@ int main (int n_args, char *ll_args[]) {
     int id_shm_matrizMovimientosP = atoi(ll_args[2]);
     int id_shm_matrizPaletas = atoi(ll_args[3]);
     int index = atoi(ll_args[4]); // Índex de la paleta.
-
+      
     DadesCompartides* dades = map_mem(id_shm);
     int* matrizMovimientosPaletas = map_mem(id_shm_matrizMovimientosP);
     Fila* matrizPaletas = map_mem(id_shm_matrizPaletas);
-
     int f_h;
-  
-  
+
 
  /* char rh,rv,rd; */
   
   while ((dades->tec != TEC_RETURN) && (dades->cont == -1) && ((dades->moviments > 0) || dades->moviments == -1 || dades->moviments_infinits == 1)) {
-    win_retard(dades->retard);
+    win_retard(dades->retard * matrizPaletas[index].pal_ret);
     f_h =matrizPaletas[index].po_pf + matrizPaletas[index].v_pal;		/* posicio hipotetica de la paleta */
     if (f_h != matrizPaletas[index].ipo_pf)	/* si pos. hipotetica no coincideix amb pos. actual */
     {
@@ -64,7 +65,7 @@ int main (int n_args, char *ll_args[]) {
                 if (dades->moviments > 0){
                   dades->moviments--;    /* he fet un moviment de la paleta */
                   matrizMovimientosPaletas[index]++; // Actualitzem el numero de moviments de la paleta.
-                } 
+                }
         } else {
           /* si hi ha obstacle, canvia el sentit del moviment */
           matrizPaletas[index].v_pal = -matrizPaletas[index].v_pal;
@@ -89,9 +90,8 @@ int main (int n_args, char *ll_args[]) {
     }
     }
     else {
-      matrizPaletas[index].po_pf += matrizPaletas[index].v_pal; 
+      matrizPaletas[index].po_pf += matrizPaletas[index].v_pal;
       }	/* actualitza posicio vertical real de la paleta */
   }
-
   return 0;
 }
