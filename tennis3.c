@@ -59,8 +59,13 @@
 #include <stdio.h>		/* incloure definicions de funcions estandard */
 #include <stdlib.h>
 #include "winsuport2.h"		/* incloure definicions de funcions propies */
+#include "memoria.h" // Arxiu de control de memoria compartida 
 #include <pthread.h> // llibreria pthread.
 #include <time.h> // Llibreria per al time del joc
+
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 
 #define MIN_FIL 7		/* definir limits de variables globals */
@@ -76,8 +81,8 @@
 
 /* variables globals */
 int n_fil, n_col, m_por;	/* dimensions del taulell i porteries */
-int l_pal;			/* longitud de les paletes */
 
+pid_t tpid[NUMMAXPALETAS];	/* identificadors dels fils de les paletes */
 
 int ipu_pf, ipu_pc;      	/* posicio del la paleta d'usuari */
 
@@ -88,15 +93,27 @@ float pil_pf, pil_pc;		/* posicio de la pilota, en valor real */
 float pil_vf, pil_vc;		/* velocitat de la pilota, en valor real*/
 float pil_ret;			/* percentatge de retard de la pilota */
 
-int retard;		/* valor del retard de moviment, en mil.lisegons */
-int moviments;		/* numero max de moviments paletes per acabar el joc */
-int moviments_inicials; /* Numero de moviments inicials, util per fer calculs*/
-int moviments_infinits; /* Es una variable booleana, on indica si els moviments son infinits o no*/
+//int retard;		/* valor del retard de moviment, en mil.lisegons */
+//int moviments;		/* numero max de moviments paletes per acabar el joc */
+//int moviments_inicials; /* Numero de moviments inicials, util per fer calculs*/
+//int moviments_infinits; /* Es una variable booleana, on indica si els moviments son infinits o no*/
 
-int tec; // Tecla que pulsa el usuari
-int cont = -1; // Contador actual.
+//int tec; // Tecla que pulsa el usuari
+//int cont = -1; // Contador actual.
 int n_pal = 0;
 
+typedef struct {
+  int tec;
+  int cont;
+  int moviments;
+  int moviments_inicials;
+  int moviments_infinits;
+  int retard;
+  int l_pal;			/* longitud de les paletes */
+} DadesCompartides;
+
+DadesCompartides *dades; // Les dades esencials del joc
+int id_shm; // id de direcció de la memoria 
 
 typedef struct {
     int ipo_pf, ipo_pc;      	/* posicio del la paleta de l'ordinador */
@@ -105,8 +122,14 @@ typedef struct {
     float po_pf;	/* pos. vertical de la paleta de l'ordinador, en valor real */
 } Fila;
 
-Fila matrizPaletas[NUMMAXPALETAS]; // Matriz con la informacion de cada paleta en cada fila. 
-int matrizMovimientosPaletas[NUMMAXPALETAS]; // Matriz donde se guarda el numero de movimientos hechos. 
+int id_shm_matrizPaletas; // Identificador de memoria la matriz de paletas. 
+Fila* matrizPaletas; 
+
+int id_shm_matrizMovimientosP;
+int* matrizMovimientosPaletas;
+
+int id_shm_retwin;
+void* shared_mem_retwin;
 
 pthread_mutex_t sem = PTHREAD_MUTEX_INITIALIZER;
 
@@ -128,16 +151,16 @@ void carrega_parametres(const char *nom_fit)
   	exit(2);
   }
 
-  if (!feof(fit)) fscanf(fit,"%d %d %d %d\n",&n_fil,&n_col,&m_por,&l_pal);
+  if (!feof(fit)) fscanf(fit,"%d %d %d %d\n",&n_fil,&n_col,&m_por,&dades->l_pal);
   if ((n_fil < MIN_FIL) || (n_fil > MAX_FIL) ||
 	(n_col < MIN_COL) || (n_col > MAX_COL) || (m_por < 0) ||
-	 (m_por > n_fil-3) || (l_pal < MIN_PAL) || (l_pal > n_fil-3))
+	 (m_por > n_fil-3) || (dades->l_pal < MIN_PAL) || (dades->l_pal > n_fil-3))
   {
 	fprintf(stderr,"Error: dimensions del camp de joc incorrectes:\n");
 	fprintf(stderr,"\t%d =< n_fil (%d) =< %d\n",MIN_FIL,n_fil,MAX_FIL);
 	fprintf(stderr,"\t%d =< n_col (%d) =< %d\n",MIN_COL,n_col,MAX_COL);
 	fprintf(stderr,"\t0 =< m_por (%d) =< n_fil-3 (%d)\n",m_por,(n_fil-3));
-	fprintf(stderr,"\t%d =< l_pal (%d) =< n_fil-3 (%d)\n",MIN_PAL,l_pal,(n_fil-3));
+	fprintf(stderr,"\t%d =< l_pal (%d) =< n_fil-3 (%d)\n",MIN_PAL,dades->l_pal,(n_fil-3));
 	fclose(fit);
 	exit(3);
   }
@@ -162,13 +185,13 @@ void carrega_parametres(const char *nom_fit)
   
   while(!feof(fit)) {
     fscanf(fit,"%d %d %f %f\n",&ipo_pf,&ipo_pc,&v_pal,&pal_ret);
-    if ((ipo_pf < 1) || (ipo_pf+l_pal > n_fil-2) ||
+    if ((ipo_pf < 1) || (ipo_pf+dades->l_pal > n_fil-2) ||
     (ipo_pc < 5) || (ipo_pc > n_col-2) ||
     (v_pal < MIN_VEL) || (v_pal > MAX_VEL) ||
     (pal_ret < MIN_RET) || (pal_ret > MAX_RET))
       {
     fprintf(stderr,"Error: parametres paleta ordinador incorrectes:\n");
-    fprintf(stderr,"\t1 =< ipo_pf (%d) =< n_fil-l_pal-3 (%d)\n",ipo_pf,(n_fil-l_pal-3));
+    fprintf(stderr,"\t1 =< ipo_pf (%d) =< n_fil-l_pal-3 (%d)\n",ipo_pf,(n_fil-dades->l_pal-3));
     fprintf(stderr,"\t5 =< ipo_pc (%d) =< n_col-2 (%d)\n",ipo_pc,(n_col-2));
     fprintf(stderr,"\t%.1f =< v_pal (%.1f) =< %.1f\n",MIN_VEL,v_pal,MAX_VEL);
     fprintf(stderr,"\t%.1f =< pal_ret (%.1f) =< %.1f\n",MIN_RET,pal_ret,MAX_RET);
@@ -206,6 +229,12 @@ int inicialitza_joc(void)
      }
      return(retwin);
   }
+
+  id_shm_retwin = ini_mem(retwin); // Inicialitzem la memoria compartida
+  shared_mem_retwin = map_mem(id_shm_retwin); // Mapejem la memoria compartida
+
+  win_set(shared_mem_retwin, n_fil, n_col); // Guardem la finestra en la memoria compartida
+  win_update();    /* actualitza la pantalla */
   i_port = n_fil/2 - m_por/2;	    /* crea els forats de la porteria */
   if (n_fil%2 == 0) i_port--;
   if (i_port == 0) i_port=1;
@@ -215,14 +244,14 @@ int inicialitza_joc(void)
 	win_escricar(i,n_col-1,' ',NO_INV);
   }
   ipu_pf = n_fil/2; ipu_pc = 3;		/* inicialitzar pos. paletes */
-  if (ipu_pf+l_pal >= n_fil-3) ipu_pf = 1;
-  for (i=0; i< l_pal; i++)	    /* dibuixar paleta inicialment */
+  if (ipu_pf+dades->l_pal >= n_fil-3) ipu_pf = 1;
+  for (i=0; i< dades->l_pal; i++)	    /* dibuixar paleta inicialment */
   {	
     win_escricar(ipu_pf +i, ipu_pc, '0',INVERS);
   } 
   for (int i = 0; i < n_pal; i++)
   {
-      for (int j = 0; j < l_pal; j++) /* dibuixar paleta inicialment */
+      for (int j = 0; j < dades->l_pal; j++) /* dibuixar paleta inicialment */
     {
       win_escricar(matrizPaletas[i].ipo_pf + j, matrizPaletas[i].ipo_pc, '1'+i, INVERS);
     }
@@ -252,7 +281,7 @@ int inicialitza_joc(void)
 void * moure_pilota(void * cap) {
   int f_h, c_h, result;
   char rh, rv, rd, pd;
-  while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1 || moviments_infinits == 1))
+  while ((dades->tec != TEC_RETURN) && (dades->cont == -1) && ((dades->moviments > 0) || dades->moviments == -1 || dades->moviments_infinits == 1))
   {
     /**
       * Per no posar sempre el mateix comentari: 
@@ -260,7 +289,7 @@ void * moure_pilota(void * cap) {
       * // Codi que volem protegir
       * pthread_mutex_unlock(&sem); // Desbloqueja el semafor
     */
-    win_retard(retard);
+    win_retard(dades->retard);
     f_h = pil_pf + pil_vf;      /* posicio hipotetica de la pilota */
     c_h = pil_pc + pil_vc;
     result = -1;        /* inicialment suposem que la pilota no surt */
@@ -326,7 +355,7 @@ void * moure_pilota(void * cap) {
         pil_pf += pil_vf; pil_pc += pil_vc;
     }
     pthread_mutex_lock(&sem); 
-    cont = result; // Actualitzem la informació de la pilota.
+    dades->cont = result; // Actualitzem la informació de la pilota.
     pthread_mutex_unlock(&sem);
   }
   return NULL;
@@ -334,20 +363,20 @@ void * moure_pilota(void * cap) {
 
 
 void * mou_paleta_usuari(void * cap) {
-    while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1 || moviments_infinits == 1)) {
+    while ((dades->tec != TEC_RETURN) && (dades->cont == -1) && ((dades->moviments > 0) || dades->moviments == -1 || dades->moviments_infinits == 1)) {
         /**
          * Per no posar sempre el mateix comentari: 
          * pthread_mutex_lock(&sem); // Bloqueja el semafor
          * // Codi que volem protegir
          * pthread_mutex_unlock(&sem); // Desbloqueja el semafor
         */
-        win_retard(retard);
+        win_retard(dades->retard);
         pthread_mutex_lock(&sem);
-        tec = win_gettec(); 
+        dades->tec = win_gettec(); 
         pthread_mutex_unlock(&sem);
-        if (tec != 0) {
+        if (dades->tec != 0) {
           pthread_mutex_lock(&sem);
-          if ((tec == TEC_AVALL) && (win_quincar(ipu_pf+l_pal,ipu_pc) == ' '))
+          if ((dades->tec == TEC_AVALL) && (win_quincar(ipu_pf+dades->l_pal,ipu_pc) == ' '))
           {
               pthread_mutex_unlock(&sem);
               pthread_mutex_lock(&sem);
@@ -355,23 +384,23 @@ void * mou_paleta_usuari(void * cap) {
               pthread_mutex_unlock(&sem);
               ipu_pf++;					   /* actualitza posicio */
               pthread_mutex_lock(&sem);
-              win_escricar(ipu_pf+l_pal-1,ipu_pc,'0',INVERS); /* impri. ultim bloc */
+              win_escricar(ipu_pf+dades->l_pal-1,ipu_pc,'0',INVERS); /* impri. ultim bloc */
               pthread_mutex_unlock(&sem);
-              if (moviments > 0) moviments--;    /* he fet un moviment de la paleta */
+              if (dades->moviments > 0) dades->moviments--;    /* he fet un moviment de la paleta */
               
           }
           pthread_mutex_unlock(&sem);
           pthread_mutex_lock(&sem);
-          if ((tec == TEC_AMUNT) && (win_quincar(ipu_pf-1,ipu_pc) == ' '))
+          if ((dades->tec == TEC_AMUNT) && (win_quincar(ipu_pf-1,ipu_pc) == ' '))
           {
               pthread_mutex_unlock(&sem);
               pthread_mutex_lock(&sem);
-              win_escricar(ipu_pf+l_pal-1,ipu_pc,' ',NO_INV); /* esborra ultim bloc */
+              win_escricar(ipu_pf+dades->l_pal-1,ipu_pc,' ',NO_INV); /* esborra ultim bloc */
               pthread_mutex_unlock(&sem);
               ipu_pf--;					    /* actualitza posicio */
               pthread_mutex_lock(&sem);
               win_escricar(ipu_pf,ipu_pc,'0',INVERS);	    /* imprimeix primer bloc */
-              if (moviments > 0) moviments--;    /* he fet un moviment de la paleta */
+              if (dades->moviments > 0) dades->moviments--;    /* he fet un moviment de la paleta */
               pthread_mutex_unlock(&sem);
           }
           pthread_mutex_unlock(&sem);
@@ -392,38 +421,38 @@ void * mou_paleta_usuari(void * cap) {
 void *mostra_informacio() {
     char strin[1024];
     time_t start_time = time(NULL);
-    while ((tec != TEC_RETURN) && (cont == -1) && ((moviments > 0) || moviments == -1 || moviments_infinits == 1)) {
-      win_retard(retard);
+    while ((dades->tec != TEC_RETURN) && (dades->cont == -1) && ((dades->moviments > 0) || dades->moviments == -1 || dades->moviments_infinits == 1)) {
+      win_retard(dades->retard);
       time_t current_time = time(NULL);
       time_t elapsed_time = current_time - start_time;
       int minuts = elapsed_time / 60;
       int segons = elapsed_time % 60;
-      if(moviments_infinits == 0) {
-        sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, MF: \'%d\', MR: \'%d\' T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, moviments_inicials - moviments, moviments, minuts, segons);
+      if(dades->moviments_infinits == 0) {
+        sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, MF: \'%d\', MR: \'%d\' T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, dades->moviments_inicials - dades->moviments, dades->moviments, minuts, segons);
         pthread_mutex_lock(&sem); // Bloquejem el semafor perque anem a escriure en pantalla.
         win_escristr(strin);
         pthread_mutex_unlock(&sem); // Desbloquejem el semafor.
       } else {
-        sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, MF: \'%d\', MR: INF T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, moviments_inicials - moviments, minuts, segons);
+        sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, MF: \'%d\', MR: INF T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, dades->moviments_inicials - dades->moviments, minuts, segons);
         pthread_mutex_lock(&sem); // Bloquejem el semafor perque anem a escriure en pantalla.
         win_escristr(strin);
         pthread_mutex_unlock(&sem); // Desbloquejem el semafor.
       }
-      if (tec == TEC_ESPAI) {
+      if (dades->tec == TEC_ESPAI) {
               pthread_mutex_lock(&sem);
-              tec = 0; 
-              while (tec != TEC_ESPAI) {
-                win_retard(retard);
+              dades->tec = 0; 
+              while (dades->tec != TEC_ESPAI) {
+                win_retard(dades->retard);
                 time_t current_time = time(NULL);
                 time_t elapsed_time = current_time - start_time;
                 int minuts = elapsed_time / 60;
                 int segons = elapsed_time % 60;
-                tec = win_gettec();
-                if(moviments_infinits == 0) {
-                  sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, MF: \'%d\', MR: \'%d\' T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, moviments_inicials - moviments, moviments, minuts, segons);
+                dades->tec = win_gettec();
+                if(dades->moviments_infinits == 0) {
+                  sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, MF: \'%d\', MR: \'%d\' T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, dades->moviments_inicials - dades->moviments, dades->moviments, minuts, segons);
                   win_escristr(strin);
                 } else {
-                  sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, MF: \'%d\', MR: INF T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, moviments_inicials - moviments, minuts, segons);
+                  sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, MF: \'%d\', MR: INF T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, dades->moviments_inicials - dades->moviments, minuts, segons);
                   win_escristr(strin);
                 }
               }
@@ -433,28 +462,41 @@ void *mostra_informacio() {
     return NULL;
 }
 
+
 /* programa principal				    */
 int main(int n_args, const char *ll_args[])
 {
+  id_shm = ini_mem(sizeof(DadesCompartides)); // Inicialitzem la memoria compartida
+  dades = map_mem(id_shm); // Mapejem la memoria compartida
+  dades->cont = -1; // Inicializamos el contador a -1. 
+
+  id_shm_matrizPaletas = ini_mem(sizeof(Fila) * NUMMAXPALETAS); // Inicialitzem la memoria compartida
+  matrizPaletas = map_mem(id_shm_matrizPaletas); // Mapejem la memoria compartida
+
+  id_shm_matrizMovimientosP = ini_mem(sizeof(int) * NUMMAXPALETAS); // Inicialitzem la memoria compartida
+  matrizMovimientosPaletas = map_mem(id_shm_matrizMovimientosP); // Mapejem la memoria compartida
   
   if ((n_args != 3) && (n_args !=4))
   {	fprintf(stderr,"Comanda: tennis0 fit_param moviments [retard]\n");
   	exit(1);
   }
-  carrega_parametres(ll_args[1]);
-    moviments=atoi(ll_args[2]);
-    if (moviments == 0) {
-      moviments = __INT_MAX__;
-      moviments_inicials = __INT_MAX__;
-      moviments_infinits = 1;
+  /**
+   * Ara la carrega de parametres fara us de les 2 noves zones de memoria indicades, si fa el cas. Per als procesos. 
+  */
+  carrega_parametres(ll_args[1]); 
+    dades->moviments=atoi(ll_args[2]);
+    if (dades->moviments == 0) {
+      dades->moviments = __INT_MAX__;
+      dades->moviments_inicials = __INT_MAX__;
+      dades->moviments_infinits = 1;
     } else {
-      moviments_inicials = moviments;
-      moviments_infinits = 0;
+      dades->moviments_inicials = dades->moviments;
+      dades->moviments_infinits = 0;
     }
      
 
-  if (n_args == 4) retard = atoi(ll_args[3]);
-  else retard = 100; // Si no esta el retard, posem el retard a 100. 
+  if (n_args == 4) dades->retard = atoi(ll_args[3]);
+  else dades->retard = 100; // Si no esta el retard, posem el retard a 100. 
 
   if (inicialitza_joc() !=0)    /* intenta crear el taulell de joc */
      exit(4);   /* aborta si hi ha algun problema amb taulell */
@@ -469,7 +511,7 @@ int main(int n_args, const char *ll_args[])
   } while ((tec != TEC_RETURN) && (cont==-1) && ((moviments > 0) || moviments == -1));*/
 
     pthread_t thread_pilota, thread_paleta_usuari, thread_time_moviments;
-    pthread_mutex_init(&sem, NULL); // Inicialitzem el semafor. 
+    pthread_mutex_init(&sem, NULL); // Inicialitzem el semafor.
     // Crear els fils
     pthread_create(&thread_pilota, NULL, moure_pilota, NULL);
     pthread_create(&thread_paleta_usuari, NULL, mou_paleta_usuari, NULL);
@@ -479,8 +521,18 @@ int main(int n_args, const char *ll_args[])
     {
       matrizMovimientosPaletas[i] = 0; // INICIALIZAMOS TODOS LOS MOVIMENTOS A 0.
     }
-    
 
+    // Conversio de IDs a String. 
+    char id_shm_str[12]; 
+    char id_shm_matrizPaletas_str[12];
+    char id_shm_matrizMovimientosP_str[12];
+    char id_shm_retwin_str[12];
+    sprintf(id_shm_str, "%d", id_shm);
+    sprintf(id_shm_matrizPaletas_str, "%d", id_shm_matrizPaletas); 
+    sprintf(id_shm_matrizMovimientosP_str, "%d", id_shm_matrizMovimientosP);
+    sprintf(id_shm_retwin_str, "%d", id_shm_retwin);
+    
+    char index_str[12];
     for (int i = 0; i < n_pal; i++)
     {
       int *arg = malloc(sizeof(*arg)); // Creem un espai de memoria per allojar el index.
@@ -489,21 +541,30 @@ int main(int n_args, const char *ll_args[])
         exit(EXIT_FAILURE);
       }
       *arg = i; // Asignem el index a la memoria creada.
-      //pthread_create(&threads_pal_ordinador[i], NULL, mou_paleta_ordinador, arg); // Creem el thread on com argument li pasem el lloc de memoria creat.
+      tpid[i] = fork(); // Creem el proces fill.
+      if(tpid[i] == (pid_t) 0) {
+        sprintf(index_str, "%d", *arg); // Convertim l'index a string.
+        execlp("./pal_ord3", "./pal_ord3", id_shm_str, id_shm_matrizMovimientosP_str, id_shm_matrizPaletas_str, id_shm_str,(char*)0); // Creem el proces fill.
+        fprintf(stderr, "No se ha pogut crear els fils de la paleta del ordinador, error!");
+        exit(0);
+      }
     }
     
+    // Aqui añadir el codigo de la actualizacion de la pantalla cada cierto tiempo.
+
 
     // Esperar que els fils acabin
     pthread_join(thread_paleta_usuari, NULL);
     pthread_join(thread_pilota, NULL);
     pthread_join(thread_time_moviments, NULL);
 
+
     // Destruim el semafor
     pthread_mutex_destroy(&sem); // Destruim el semafor.
   win_fi();
 
-  if (tec == TEC_RETURN) printf("S'ha aturat el joc amb la tecla RETURN!\n");
-  else { if (cont == 0 || moviments == 0) printf("Ha guanyat l'ordinador!\n");
+  if (dades->tec == TEC_RETURN) printf("S'ha aturat el joc amb la tecla RETURN!\n");
+  else { if (dades->cont == 0 || dades->moviments == 0) printf("Ha guanyat l'ordinador!\n");
          else printf("Ha guanyat l'usuari!\n"); }
 
   for (int i = 0; i < n_pal; i++) {

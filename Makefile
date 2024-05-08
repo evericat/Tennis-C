@@ -19,10 +19,10 @@ tennis2 : tennis2.c winsuport.o winsuport.h
 	gcc -Wall tennis2.c winsuport.o -o tennis2 -lcurses -lpthread
 
 tennis3: tennis3.c winsuport2.o winsuport2.h pal_ord3.c memoria.o
-	gcc -Wall tennis3.c winsuport2.o -o tennis3 -lcurses -lpthread
+	gcc -Wall tennis3.c winsuport2.o memoria.o -o tennis3 -lcurses -lpthread
 
-pal_ord3: pal_ord3.c memoria.o
-	gcc -Wall pal_ord3.c memoria.o -o pal_ord3
+pal_ord3: pal_ord3.c memoria.o winsuport2.o
+	gcc -Wall pal_ord3.c memoria.o winsuport2.o -lcurses -o pal_ord3
 
 clean: 
 	rm winsuport.o tennis0 tennis1 tennis2 tennis3 pal_ord3 memoria.o winsuport2.o
