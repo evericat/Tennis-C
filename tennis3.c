@@ -514,21 +514,21 @@ int main(int n_args, const char *ll_args[])
     }
 
     // Conversio de IDs a String. 
-    char id_shm_str[12]; 
-    char id_shm_matrizPaletas_str[12];
-    char id_shm_matrizMovimientosP_str[12];
-    //char id_shm_retwin_str[12];
+    char id_shm_str[32]; 
+    char id_shm_matrizPaletas_str[32];
+    char id_shm_matrizMovimientosP_str[32];
+    char id_shm_retwin_str[32];
     sprintf(id_shm_str, "%d", id_shm);
     sprintf(id_shm_matrizPaletas_str, "%d", id_shm_matrizPaletas); 
     sprintf(id_shm_matrizMovimientosP_str, "%d", id_shm_matrizMovimientosP);
-    // sprintf(id_shm_retwin_str, "%d", id_shm_retwin);
+    sprintf(id_shm_retwin_str, "%d", id_shm_retwin);
     char index_str[12];
     for (int i = 0; i < n_pal; i++)
     {
       tpid[i] = fork(); // Creem el proces fill.
       if(tpid[i] == (pid_t) 0) {
         sprintf(index_str, "%d", i); // Convertim l'index a string.
-        execlp("./pal_ord3", "pal_ord3", id_shm_str, id_shm_matrizMovimientosP_str, id_shm_matrizPaletas_str, index_str, (char*)0); // Creem el proces fill.
+        execlp("./pal_ord3", "./pal_ord3", id_shm_str, id_shm_matrizMovimientosP_str, id_shm_matrizPaletas_str, index_str, id_shm_retwin_str, (char*)0); // Creem el proces fill.
         fprintf(stderr, "No se ha pogut crear els fils de la paleta del ordinador, error!");
         exit(0);
       }
@@ -539,6 +539,10 @@ int main(int n_args, const char *ll_args[])
     pthread_join(thread_pilota, NULL);
     pthread_join(thread_time_moviments, NULL);
 
+    for (int i = 0; i < n_pal; i++)
+    {
+      waitpid(tpid[i], NULL, 0); // Esperem que acabi el proces fill.
+    }
 
     // Destruim el semafor
     pthread_mutex_destroy(&sem); // Destruim el semafor.
