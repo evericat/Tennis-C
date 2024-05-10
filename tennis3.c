@@ -454,7 +454,12 @@ void *mostra_informacio() {
 
 /* programa principal				    */
 int main(int n_args, const char *ll_args[])
-{
+{ 
+  if ((n_args != 3) && (n_args !=4))
+  {	fprintf(stderr,"Comanda: tennis0 fit_param moviments [retard]\n");
+  	exit(1);
+  }
+  // Nomes carreguem les zones de memoria si tot ha anat be al inici. 
   id_shm = ini_mem(sizeof(DadesCompartides)); // Inicialitzem la memoria compartida
   dades = map_mem(id_shm); // Mapejem la memoria compartida
   dades->cont = -1; // Inicializamos el contador a -1. 
@@ -464,11 +469,6 @@ int main(int n_args, const char *ll_args[])
 
   id_shm_matrizMovimientosP = ini_mem(sizeof(int) * NUMMAXPALETAS); // Inicialitzem la memoria compartida
   matrizMovimientosPaletas = map_mem(id_shm_matrizMovimientosP); // Mapejem la memoria compartida
-  
-  if ((n_args != 3) && (n_args !=4))
-  {	fprintf(stderr,"Comanda: tennis0 fit_param moviments [retard]\n");
-  	exit(1);
-  }
   /**
    * Ara la carrega de parametres fara us de les 2 noves zones de memoria indicades, si fa el cas. Per als procesos. 
   */

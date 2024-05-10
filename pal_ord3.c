@@ -53,7 +53,7 @@ int main (int n_args, char *ll_args[]) {
   
   // Fem un winset 
 
-  win_set(pWinP, dades->n_fil, dades->n_col);
+  win_set(pWinP, dades->n_fil, dades->n_col); // Posem la escritura de pantalla també per a les paletes del ordinador. 
 
   while ((dades->tec != TEC_RETURN) && (dades->cont == -1) && ((dades->moviments > 0) || dades->moviments == -1 || dades->moviments_infinits == 1)) {
     win_retard(dades->retard * matrizPaletas[index].pal_ret);
