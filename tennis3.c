@@ -538,6 +538,7 @@ int main(int n_args, const char *ll_args[])
     pthread_join(thread_paleta_usuari, NULL);
     pthread_join(thread_pilota, NULL);
     pthread_join(thread_time_moviments, NULL);
+    pthread_join(thread_actualizar_pantalla, NULL);
 
     for (int i = 0; i < n_pal; i++)
     {
