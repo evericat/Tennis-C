@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "memoria.h"
+#include "semafor.h"
 
 
 /**
@@ -47,6 +48,9 @@ int main (int n_args, char *ll_args[]) {
     int* matrizMovimientosPaletas = map_mem(id_shm_matrizMovimientosP);
     Fila* matrizPaletas = map_mem(id_shm_matrizPaletas);
     int f_h;
+
+    // Preparem el semafor
+    int id_sem = atoi(ll_args[6]);
 
 
  /* char rh,rv,rd; */

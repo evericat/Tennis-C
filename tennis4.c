@@ -415,9 +415,7 @@ void * mou_paleta_usuari(void * cap) {
 void *actualitzar_pantalla(void *cap) {
     while ((dades->tec != TEC_RETURN) && (dades->cont == -1) && ((dades->moviments > 0) || dades->moviments == -1 || dades->moviments_infinits == 1)) {
         win_retard(dades->retard);
-        waitS(id_sem);
         win_update();
-        signalS(id_sem);
     }
     return NULL;
 }
@@ -446,9 +444,10 @@ void *mostra_informacio() {
          // Desbloquejem el semafor.
          signalS(id_sem);
       }
+
       if (dades->tec == TEC_ESPAI) {
-        waitS(id_sem);
         dades->tec = 0; 
+        //waitS(id_sem); // PREGUNTAR PROFESOR. 
         while (dades->tec != TEC_ESPAI) {
           win_retard(dades->retard);
           time_t current_time = time(NULL);
@@ -464,7 +463,7 @@ void *mostra_informacio() {
             win_escristr(strin);
           }
         }
-        signalS(id_sem);      
+        //signalS(id_sem);  
       }
     }
     return NULL;
@@ -536,12 +535,15 @@ int main(int n_args, const char *ll_args[])
     sprintf(id_shm_matrizMovimientosP_str, "%d", id_shm_matrizMovimientosP);
     sprintf(id_shm_retwin_str, "%d", id_shm_retwin);
     char index_str[12];
+    char id_sem_str[32]; // String id del semafor. 
+    sprintf(id_sem_str, "%d", id_sem);
+
     for (int i = 0; i < n_pal; i++)
     {
       tpid[i] = fork(); // Creem el proces fill.
       if(tpid[i] == (pid_t) 0) {
         sprintf(index_str, "%d", i); // Convertim l'index a string.
-        execlp("./pal_ord4", "./pal_ord4", id_shm_str, id_shm_matrizMovimientosP_str, id_shm_matrizPaletas_str, index_str, id_shm_retwin_str, (char*)0); // Creem el proces fill.
+        execlp("./pal_ord4", "./pal_ord4", id_shm_str, id_shm_matrizMovimientosP_str, id_shm_matrizPaletas_str, index_str, id_shm_retwin_str, id_sem_str, (char*)0); // Creem el proces fill.
         fprintf(stderr, "No se ha pogut crear els fils de la paleta del ordinador, error!");
         exit(0);
       }
