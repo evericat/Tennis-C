@@ -547,6 +547,13 @@ int main(int n_args, const char *ll_args[])
 
     // Destruim el semafor
     pthread_mutex_destroy(&sem); // Destruim el semafor.
+
+    // Destruim les zones de memoria. 
+    elim_mem(id_shm);
+    elim_mem(id_shm_matrizMovimientosP);
+    elim_mem(id_shm_matrizPaletas);
+    elim_mem(id_shm_retwin);
+    
   win_fi();
 
   if (dades->tec == TEC_RETURN) printf("S'ha aturat el joc amb la tecla RETURN!\n");

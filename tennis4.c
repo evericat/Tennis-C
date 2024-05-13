@@ -375,32 +375,38 @@ void * mou_paleta_usuari(void * cap) {
          *  // Desbloqueja el semafor
         */
         win_retard(dades->retard);
+        waitS(id_sem);
         dades->tec = win_gettec();
+        signalS(id_sem);
         if (dades->tec != 0) {
-          
+          waitS(id_sem);
           if ((dades->tec == TEC_AVALL) && (win_quincar(ipu_pf+dades->l_pal,ipu_pc) == ' '))
           {
+              signalS(id_sem);
+              waitS(id_sem);
               win_escricar(ipu_pf,ipu_pc,' ',NO_INV);	   /* esborra primer bloc */
+              signalS(id_sem);
               ipu_pf++;					   /* actualitza posicio */
+              waitS(id_sem);
               win_escricar(ipu_pf+dades->l_pal-1,ipu_pc,'0',INVERS); /* impri. ultim bloc */
+              signalS(id_sem);
               if (dades->moviments > 0) dades->moviments--;    /* he fet un moviment de la paleta */
               
           }
+          signalS(id_sem);
+          waitS(id_sem);
           if ((dades->tec == TEC_AMUNT) && (win_quincar(ipu_pf-1,ipu_pc) == ' '))
           {
+              signalS(id_sem);
+              waitS(id_sem);
               win_escricar(ipu_pf+dades->l_pal-1,ipu_pc,' ',NO_INV); /* esborra ultim bloc */
+              signalS(id_sem);
               ipu_pf--;					    /* actualitza posicio */
+              waitS(id_sem);
               win_escricar(ipu_pf,ipu_pc,'0',INVERS);	    /* imprimeix primer bloc */
               if (dades->moviments > 0) dades->moviments--;    /* he fet un moviment de la paleta */
+              signalS(id_sem);
           }
-          /*if (tec == TEC_ESPAI) {
-              win_escristr("==== PAUSA ====");
-              tec = 0; 
-              while (tec != TEC_ESPAI) {
-                tec = win_gettec();
-              }
-              
-          }*/
         }
     }
     return NULL;
@@ -408,8 +414,10 @@ void * mou_paleta_usuari(void * cap) {
 
 void *actualitzar_pantalla(void *cap) {
     while ((dades->tec != TEC_RETURN) && (dades->cont == -1) && ((dades->moviments > 0) || dades->moviments == -1 || dades->moviments_infinits == 1)) {
-        win_retard(dades->retard); 
+        win_retard(dades->retard);
+        waitS(id_sem);
         win_update();
+        signalS(id_sem);
     }
     return NULL;
 }
@@ -426,33 +434,37 @@ void *mostra_informacio() {
       if(dades->moviments_infinits == 0) {
         sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, MF: \'%d\', MR: \'%d\' T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, dades->moviments_inicials - dades->moviments, dades->moviments, minuts, segons);
          // Bloquejem el semafor perque anem a escriure en pantalla.
+         waitS(id_sem);
         win_escristr(strin);
          // Desbloquejem el semafor.
+         signalS(id_sem);
       } else {
         sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, MF: \'%d\', MR: INF T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, dades->moviments_inicials - dades->moviments, minuts, segons);
          // Bloquejem el semafor perque anem a escriure en pantalla.
+         waitS(id_sem);
         win_escristr(strin);
          // Desbloquejem el semafor.
+         signalS(id_sem);
       }
       if (dades->tec == TEC_ESPAI) {
-              
-              dades->tec = 0; 
-              while (dades->tec != TEC_ESPAI) {
-                win_retard(dades->retard);
-                time_t current_time = time(NULL);
-                time_t elapsed_time = current_time - start_time;
-                int minuts = elapsed_time / 60;
-                int segons = elapsed_time % 60;
-                dades->tec = win_gettec();
-                if(dades->moviments_infinits == 0) {
-                  sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, MF: \'%d\', MR: \'%d\' T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, dades->moviments_inicials - dades->moviments, dades->moviments, minuts, segons);
-                  win_escristr(strin);
-                } else {
-                  sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, MF: \'%d\', MR: INF T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, dades->moviments_inicials - dades->moviments, minuts, segons);
-                  win_escristr(strin);
-                }
-              }
-              
+        waitS(id_sem);
+        dades->tec = 0; 
+        while (dades->tec != TEC_ESPAI) {
+          win_retard(dades->retard);
+          time_t current_time = time(NULL);
+          time_t elapsed_time = current_time - start_time;
+          int minuts = elapsed_time / 60;
+          int segons = elapsed_time % 60;
+          dades->tec = win_gettec();
+          if(dades->moviments_infinits == 0) {
+            sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, MF: \'%d\', MR: \'%d\' T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, dades->moviments_inicials - dades->moviments, dades->moviments, minuts, segons);
+            win_escristr(strin);
+          } else {
+            sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, MF: \'%d\', MR: INF T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, dades->moviments_inicials - dades->moviments, minuts, segons);
+            win_escristr(strin);
+          }
+        }
+        signalS(id_sem);      
       }
     }
     return NULL;
@@ -545,6 +557,15 @@ int main(int n_args, const char *ll_args[])
     {
       waitpid(tpid[i], NULL, 0); // Esperem que acabi el proces fill.
     }
+
+    // Destruim el semafor
+    elim_sem(id_sem);
+
+      // Destruim les zones de memoria. 
+    elim_mem(id_shm);
+    elim_mem(id_shm_matrizMovimientosP);
+    elim_mem(id_shm_matrizPaletas);
+    elim_mem(id_shm_retwin);
 
   win_fi();
 
