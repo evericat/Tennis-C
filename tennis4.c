@@ -62,6 +62,7 @@
 #include "memoria.h" // Arxiu de control de memoria compartida 
 #include <pthread.h> // llibreria pthread.
 #include <time.h> // Llibreria per al time del joc
+#include "semafor.h"
 
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -133,7 +134,7 @@ int* matrizMovimientosPaletas;
 int id_shm_retwin;
 void* shared_mem_retwin;
 
-pthread_mutex_t sem = PTHREAD_MUTEX_INITIALIZER;
+int id_sem; 
 
 /* funcio per realitzar la carrega dels parametres de joc emmagatzemats */
 /* dins un fitxer de text, el nom del qual es passa per referencia en   */
@@ -301,9 +302,9 @@ void * moure_pilota(void * cap) {
     {       /* si posicio hipotetica no coincideix amb la pos. actual */
       if (f_h != ipil_pf)     /* provar rebot vertical */
       {
-        
+        waitS(id_sem);
         rv = win_quincar(f_h, ipil_pc);    /* veure si hi ha algun obstacle */
-        
+        signalS(id_sem);
         if (rv != ' ')          /* si no hi ha res */
         {
           pil_vf = -pil_vf;       /* canvia velocitat vertical */
@@ -312,9 +313,9 @@ void * moure_pilota(void * cap) {
       }
       if (c_h != ipil_pc)     /* provar rebot horitzontal */
       {
-        
+        waitS(id_sem);
         rh = win_quincar(ipil_pf, c_h);    /* veure si hi ha algun obstacle */
-        
+        signalS(id_sem);
         if (rh != ' ')          /* si no hi ha res */
         {
           pil_vc = -pil_vc;       /* canvia velocitat horitzontal */
@@ -323,9 +324,9 @@ void * moure_pilota(void * cap) {
       }
       if ((f_h != ipil_pf) && (c_h != ipil_pc))    /* provar rebot diagonal */
       {
-        
+        waitS(id_sem);
         rd = win_quincar(f_h, c_h);
-        
+        signalS(id_sem);
         if (rd != ' ')              /* si no hi ha obstacle */
         {
           pil_vf = -pil_vf; pil_vc = -pil_vc;    /* canvia velocitats */
@@ -333,16 +334,20 @@ void * moure_pilota(void * cap) {
           c_h = pil_pc + pil_vc;      /* actualitza posicio entera */
         }
       }
-      
+      waitS(id_sem);
       if (win_quincar(f_h, c_h) == ' ')    /* verificar posicio definitiva */
       {
-                                           /* si no hi ha obstacle */
+        signalS(id_sem);
+        waitS(id_sem);                                   /* si no hi ha obstacle */
         win_escricar(ipil_pf, ipil_pc, ' ', NO_INV);    /* esborra pilota */
+        signalS(id_sem);
         pil_pf += pil_vf; pil_pc += pil_vc;
         ipil_pf = f_h; ipil_pc = c_h;       /* actualitza posicio actual */
         if ((ipil_pc > 0) && (ipil_pc <= dades->n_col)){
           /* si no surt */
+          waitS(id_sem);
           win_escricar(ipil_pf, ipil_pc, '.', INVERS); /* imprimeix pilota */
+          signalS(id_sem);
         }    
         else
         {
@@ -353,7 +358,9 @@ void * moure_pilota(void * cap) {
     } else { // Si la pilota no es mou, actualitzem la posició de la pilota.
         pil_pf += pil_vf; pil_pc += pil_vc;
     }
+    waitS(id_sem);
     dades->cont = result; // Actualitzem la informació de la pilota.
+    signalS(id_sem);
   }
   return NULL;
 }
@@ -490,18 +497,12 @@ int main(int n_args, const char *ll_args[])
   if (inicialitza_joc() !=0)    /* intenta crear el taulell de joc */
      exit(4);   /* aborta si hi ha algun problema amb taulell */
 
-  //do				/********** bucle principal del joc **********/ 
-  /*
-  {	tec = win_gettec();
-	if (tec != 0) mou_paleta_usuari(tec);
-	mou_paleta_ordinador();
-	cont = moure_pilota();
-	win_retard(retard);
-  } while ((tec != TEC_RETURN) && (cont==-1) && ((moviments > 0) || moviments == -1));*/
 
     pthread_t thread_pilota, thread_paleta_usuari, thread_time_moviments;
     pthread_t thread_actualizar_pantalla;
-    pthread_mutex_init(&sem, NULL); // Inicialitzem el semafor.
+    // Crear el semafor
+    id_sem = ini_sem(1); // Creem el semafor inicialment obert. 
+    
     // Crear els fils
     pthread_create(&thread_pilota, NULL, moure_pilota, NULL);
     pthread_create(&thread_paleta_usuari, NULL, mou_paleta_usuari, NULL);
@@ -545,8 +546,6 @@ int main(int n_args, const char *ll_args[])
       waitpid(tpid[i], NULL, 0); // Esperem que acabi el proces fill.
     }
 
-    // Destruim el semafor
-    pthread_mutex_destroy(&sem); // Destruim el semafor.
   win_fi();
 
   if (dades->tec == TEC_RETURN) printf("S'ha aturat el joc amb la tecla RETURN!\n");

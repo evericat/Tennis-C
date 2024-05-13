@@ -9,7 +9,7 @@ winsuport2.o : winsuport2.c winsuport2.h
 memoria.o: memoria.c memoria.h
 	gcc -Wall -c memoria.c -o memoria.o
 
-missatge.o: missatge.c misstage.h
+missatge.o: missatge.c missatge.h
 	gcc -Wall -c missatge.c -o missatge.o
 
 semafor.o: semafor.c semafor.h
@@ -28,7 +28,7 @@ tennis3: tennis3.c winsuport2.o winsuport2.h pal_ord3 memoria.o
 	gcc -Wall tennis3.c winsuport2.o memoria.o -o tennis3 -lcurses -lpthread
 
 tennis4: tennis4.c winsuport2.o winsuport2.h pal_ord4 memoria.o missatge.o semafor.o
-	gcc -Wall tennis4.c winsuport2.o memoria.o -o tennis4 -lcurses -lpthread
+	gcc -Wall tennis4.c winsuport2.o memoria.o missatge.o semafor.o -o tennis4 -lcurses -lpthread
 
 pal_ord3: pal_ord3.c memoria.o winsuport2.o
 	gcc -Wall pal_ord3.c memoria.o winsuport2.o -lcurses -o pal_ord3
