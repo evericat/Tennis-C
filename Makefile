@@ -29,5 +29,6 @@ pal_ord3: pal_ord3.c memoria.o winsuport2.o
 
 pal_ord4: pal_ord4.c memoria.o winsuport2.o
 	gcc -Wall pal_ord4.c memoria.o winsuport2.o -lcurses -o pal_ord4
+	
 clean: 
 	rm winsuport.o tennis0 tennis1 tennis2 tennis3 pal_ord3 memoria.o winsuport2.o
