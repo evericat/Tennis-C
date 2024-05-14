@@ -1,17 +1,40 @@
-
-
+#include <pthread.h>
 #include "winsuport2.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include "memoria.h"
 #include "semafor.h"
+#include "missatge.h"
+
+#include <stdbool.h>
+
+int id_bustia_pal, id_bustia_pare; // Variables globals.
+int revisar = 0;
+
+/**
+ * Funcio que comproba si rep un missatge en la bustia de la paleta per fer revisio.
+*/
+void *comprobarMiss() {
+  char mis[2];
+  int missatge; 
+  while(1) {
+    missatge = receiveM(id_bustia_pal, mis);
+    if (missatge != 0) {
+      revisar = 1;
+      fprintf(stderr, "%c", mis[0]);
+    }
+    missatge = 0;
+  }
+  pthread_exit(0);
+}
+
+
 
 
 /**
- * @brief Funció que mou la paleta de l'ordinador.
+ * @brief Funció main que controla la paleta del ordinador.
 */
-
 int main (int n_args, char *ll_args[]) {
   if (n_args < 5) {
     printf("Error en els arguments d'entrada. Exemple d'ús: pal_ord3 0 0 0 0\n");
@@ -51,6 +74,15 @@ int main (int n_args, char *ll_args[]) {
 
     // Preparem el semafor
     int id_sem = atoi(ll_args[6]);
+
+    // Preparem les busties
+    id_bustia_pare = atoi(ll_args[7]);
+    id_bustia_pal = atoi(ll_args[8]);
+
+    // Creem el thread que verifica si hi ha missatge
+    pthread_t missatge;
+    pthread_create(&missatge, NULL, comprobarMiss, NULL);
+    
 
 
  /* char rh,rv,rd; */
@@ -118,5 +150,7 @@ int main (int n_args, char *ll_args[]) {
       matrizPaletas[index].po_pf += matrizPaletas[index].v_pal;
       }	/* actualitza posicio vertical real de la paleta */
   }
+  pthread_cancel(missatge); // Directament ens carreguem el thread, no podem fer-ho amb join, pos el proces es queda bloquejat escoltant la cua de missatges. 
+  pthread_join(missatge, NULL);
   return 0;
 }

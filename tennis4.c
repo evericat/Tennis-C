@@ -135,7 +135,10 @@ int* matrizMovimientosPaletas;
 int id_shm_retwin;
 void* shared_mem_retwin;
 
-int id_sem, id_bustia;
+int id_sem, id_main;
+int busties_pal[NUMMAXPALETAS];
+char busties_pal_str[32][NUMMAXPALETAS];
+int bustia_main;
 
 /* funcio per realitzar la carrega dels parametres de joc emmagatzemats */
 /* dins un fitxer de text, el nom del qual es passa per referencia en   */
@@ -286,6 +289,8 @@ int inicialitza_joc(void)
 void * moure_pilota(void * cap) {
   int f_h, c_h, result;
   char rh, rv, rd, pd;
+  char mis[2];
+  
   while ((dades->tec != TEC_RETURN) && (dades->cont == -1) && ((dades->moviments > 0) || dades->moviments == -1 || dades->moviments_infinits == 1))
   {
     
@@ -301,8 +306,10 @@ void * moure_pilota(void * cap) {
       {
         
         rv = win_quincar(f_h, ipil_pc);    /* veure si hi ha algun obstacle */
-        if (rv > 0 && rv <= NUMMAXPALETAS) {
-          sprintf(stdout, "choque por vertical");
+        if (rv > '0' && rv <= '9') {
+          sprintf(mis, "%c",rv);
+          //fprintf(stderr, "%c", rv);
+          sendM(busties_pal[(int) rv - 48], mis, 2);
         }
         
         if (rv != ' ')          /* si no hi ha res */
@@ -316,8 +323,10 @@ void * moure_pilota(void * cap) {
         
         rh = win_quincar(ipil_pf, c_h);    /* veure si hi ha algun obstacle */
         
-        if (rh > 0 && rh <= NUMMAXPALETAS) {
-          sprintf(stdout, "choque por horizontal");
+        if (rh > '0' && rh <= '9') {
+          sprintf(mis, "%c", rh);
+          //fprintf(stderr, "%d", rh);
+          sendM(busties_pal[(int) rh - 48], mis, 2);
         }
         
         if (rh != ' ')          /* si no hi ha res */
@@ -330,8 +339,10 @@ void * moure_pilota(void * cap) {
       {
         
         rd = win_quincar(f_h, c_h);
-        if (rd > 0 && rd <= NUMMAXPALETAS) {
-          sprintf(stdout, "choque por diagonal");
+        if (rd > '0' && rd <= '9') {
+          sprintf(mis, "%c", rd);
+          //fprintf(stderr, "%d", rd);
+          sendM(busties_pal[(int) rd - 48], mis, 2);
         }
         
         if (rd != ' ')              /* si no hi ha obstacle */
@@ -519,7 +530,7 @@ int main(int n_args, const char *ll_args[])
     id_sem = ini_sem(1); // Creem el semafor inicialment obert.
 
     // Crear bustia
-    id_bustia = ini_mis();
+    bustia_main = ini_mis();
     
     // Crear els fils
     pthread_create(&thread_pilota, NULL, moure_pilota, NULL);
@@ -544,15 +555,28 @@ int main(int n_args, const char *ll_args[])
     char index_str[12];
     char id_sem_str[32]; // String id del semafor.
     sprintf(id_sem_str, "%d", id_sem);
-    char id_bustia_str[32];
+    char bustia_main_str[32];
+    sprintf(bustia_main_str, "%d", bustia_main);
 
 
+    // Creem les busties de les paletes
+    for(int i = 0; i < n_pal; i++) {
+      busties_pal[i] = ini_mis();
+    }
+    
+    // Convertim les busties per pasarles als procesos 
+    for(int i = 0; i < n_pal; i++)
+    {
+      sprintf(busties_pal_str[i], "%d", busties_pal[i]);
+    }
+
+    // Creamos los procesos. 
     for (int i = 0; i < n_pal; i++)
     {
       tpid[i] = fork(); // Creem el proces fill.
       if(tpid[i] == (pid_t) 0) {
         sprintf(index_str, "%d", i); // Convertim l'index a string.
-        execlp("./pal_ord4", "./pal_ord4", id_shm_str, id_shm_matrizMovimientosP_str, id_shm_matrizPaletas_str, index_str, id_shm_retwin_str, id_sem_str, id_bustia_str, (char*)0); // Creem el proces fill.
+        execlp("./pal_ord4", "./pal_ord4", id_shm_str, id_shm_matrizMovimientosP_str, id_shm_matrizPaletas_str, index_str, id_shm_retwin_str, id_sem_str, bustia_main_str, busties_pal_str[i], (char*)0); // Creem el proces fill.
         fprintf(stderr, "No se ha pogut crear els fils de la paleta del ordinador, error!");
         exit(0);
       }
@@ -562,13 +586,13 @@ int main(int n_args, const char *ll_args[])
     pthread_join(thread_paleta_usuari, NULL);
     pthread_join(thread_pilota, NULL);
     pthread_join(thread_time_moviments, NULL);
-    pthread_join(thread_actualizar_pantalla, NULL);
+    
 
     for (int i = 0; i < n_pal; i++)
     {
       waitpid(tpid[i], NULL, 0); // Esperem que acabi el proces fill.
     }
-
+    pthread_join(thread_actualizar_pantalla, NULL);
     // Destruim el semafor
     elim_sem(id_sem);
 

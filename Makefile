@@ -34,7 +34,7 @@ pal_ord3: pal_ord3.c memoria.o winsuport2.o
 	gcc -Wall pal_ord3.c memoria.o winsuport2.o -lcurses -o pal_ord3
 
 pal_ord4: pal_ord4.c memoria.o winsuport2.o
-	gcc -Wall pal_ord4.c memoria.o winsuport2.o missatge.o semafor.o -lcurses -o pal_ord4
+	gcc -Wall pal_ord4.c memoria.o winsuport2.o missatge.o semafor.o  -o pal_ord4 -lcurses -lpthread
 
 clean: 
 	rm winsuport.o tennis0 tennis1 tennis2 tennis3 tennis4 pal_ord3 pal_ord4 memoria.o winsuport2.o
