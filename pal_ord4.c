@@ -64,51 +64,54 @@ int main (int n_args, char *ll_args[]) {
     f_h =matrizPaletas[index].po_pf + matrizPaletas[index].v_pal;		/* posicio hipotetica de la paleta */
     if (f_h != matrizPaletas[index].ipo_pf)	/* si pos. hipotetica no coincideix amb pos. actual */
     {
+      waitS(id_sem);
       if (matrizPaletas[index].v_pal > 0.0)			/* verificar moviment cap avall */
       {
-        waitS(id_sem);
+        
         if (win_quincar(f_h+dades->l_pal-1,matrizPaletas[index].ipo_pc) == ' ')   /* si no hi ha obstacle */
         {
-          signalS(id_sem);
-          waitS(id_sem);
+          
+          
           win_escricar(matrizPaletas[index].ipo_pf,matrizPaletas[index].ipo_pc,' ',NO_INV);      /* esborra primer bloc */
-          signalS(id_sem);
+          
           matrizPaletas[index].po_pf += matrizPaletas[index].v_pal; matrizPaletas[index].ipo_pf = matrizPaletas[index].po_pf;		/* actualitza posicio */
-          waitS(id_sem);
+          
           win_escricar(matrizPaletas[index].ipo_pf+dades->l_pal-1,matrizPaletas[index].ipo_pc,'1'+index,INVERS); /* impr. ultim bloc */
           if (dades->moviments > 0){
             dades->moviments--;    /* he fet un moviment de la paleta */
             matrizMovimientosPaletas[index]++; // Actualitzem el numero de moviments de la paleta.
           }
-          signalS(id_sem);
+          
         } else {
           /* si hi ha obstacle, canvia el sentit del moviment */
-          signalS(id_sem);
+          
           matrizPaletas[index].v_pal = -matrizPaletas[index].v_pal;
         }
+        signalS(id_sem);
       }
       else			/* verificar moviment cap amunt */
-      { waitS(id_sem);
+      { 
     if (win_quincar(f_h,matrizPaletas[index].ipo_pc) == ' ')        /* si no hi ha obstacle */
     {
-      signalS(id_sem);
-      waitS(id_sem);
+      
+      
       win_escricar(matrizPaletas[index].ipo_pf+dades->l_pal-1,matrizPaletas[index].ipo_pc,' ',NO_INV); /* esbo. ultim bloc */
-      signalS(id_sem);
+      
       matrizPaletas[index].po_pf += matrizPaletas[index].v_pal; matrizPaletas[index].ipo_pf = matrizPaletas[index].po_pf;		/* actualitza posicio */
-      waitS(id_sem);
+      
       win_escricar(matrizPaletas[index].ipo_pf,matrizPaletas[index].ipo_pc,'1'+index,INVERS);	/* impr. primer bloc */
       if (dades->moviments > 0){
         dades->moviments--;    /* he fet un moviment de la paleta */
         matrizMovimientosPaletas[index]++; // Actualitzem el numero de moviments de la paleta.
       }
-      signalS(id_sem);     
+           
     }
     else		/* si hi ha obstacle, canvia el sentit del moviment */
     {
-      signalS(id_sem);
+      
       matrizPaletas[index].v_pal = -matrizPaletas[index].v_pal;
     }
+    signalS(id_sem);
     }
     }
     else {

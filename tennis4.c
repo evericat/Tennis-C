@@ -287,24 +287,20 @@ void * moure_pilota(void * cap) {
   char rh, rv, rd, pd;
   while ((dades->tec != TEC_RETURN) && (dades->cont == -1) && ((dades->moviments > 0) || dades->moviments == -1 || dades->moviments_infinits == 1))
   {
-    /**
-      * Per no posar sempre el mateix comentari: 
-      *  // Bloqueja el semafor
-      * // Codi que volem protegir
-      *  // Desbloqueja el semafor
-    */
+    
     win_retard(dades->retard);
     f_h = pil_pf + pil_vf;      /* posicio hipotetica de la pilota */
     c_h = pil_pc + pil_vc;
     result = -1;        /* inicialment suposem que la pilota no surt */
     rh = rv = rd = pd = ' ';
+    waitS(id_sem);
     if ((f_h != ipil_pf) || (c_h != ipil_pc))
     {       /* si posicio hipotetica no coincideix amb la pos. actual */
       if (f_h != ipil_pf)     /* provar rebot vertical */
       {
-        waitS(id_sem);
+        
         rv = win_quincar(f_h, ipil_pc);    /* veure si hi ha algun obstacle */
-        signalS(id_sem);
+        
         if (rv != ' ')          /* si no hi ha res */
         {
           pil_vf = -pil_vf;       /* canvia velocitat vertical */
@@ -313,9 +309,9 @@ void * moure_pilota(void * cap) {
       }
       if (c_h != ipil_pc)     /* provar rebot horitzontal */
       {
-        waitS(id_sem);
+        
         rh = win_quincar(ipil_pf, c_h);    /* veure si hi ha algun obstacle */
-        signalS(id_sem);
+        
         if (rh != ' ')          /* si no hi ha res */
         {
           pil_vc = -pil_vc;       /* canvia velocitat horitzontal */
@@ -324,9 +320,9 @@ void * moure_pilota(void * cap) {
       }
       if ((f_h != ipil_pf) && (c_h != ipil_pc))    /* provar rebot diagonal */
       {
-        waitS(id_sem);
+        
         rd = win_quincar(f_h, c_h);
-        signalS(id_sem);
+        
         if (rd != ' ')              /* si no hi ha obstacle */
         {
           pil_vf = -pil_vf; pil_vc = -pil_vc;    /* canvia velocitats */
@@ -334,33 +330,36 @@ void * moure_pilota(void * cap) {
           c_h = pil_pc + pil_vc;      /* actualitza posicio entera */
         }
       }
-      waitS(id_sem);
+      
       if (win_quincar(f_h, c_h) == ' ')    /* verificar posicio definitiva */
       {
-        signalS(id_sem);
-        waitS(id_sem);                                   /* si no hi ha obstacle */
+        
+                                           /* si no hi ha obstacle */
         win_escricar(ipil_pf, ipil_pc, ' ', NO_INV);    /* esborra pilota */
-        signalS(id_sem);
+        
         pil_pf += pil_vf; pil_pc += pil_vc;
         ipil_pf = f_h; ipil_pc = c_h;       /* actualitza posicio actual */
         if ((ipil_pc > 0) && (ipil_pc <= dades->n_col)){
           /* si no surt */
-          waitS(id_sem);
+          
           win_escricar(ipil_pf, ipil_pc, '.', INVERS); /* imprimeix pilota */
-          signalS(id_sem);
+          
         }    
         else
         {
           result = ipil_pc;    /* codi de finalitzacio de partida */
         }
       }
+      signalS(id_sem);
        
     } else { // Si la pilota no es mou, actualitzem la posició de la pilota.
         pil_pf += pil_vf; pil_pc += pil_vc;
+        signalS(id_sem);
     }
     waitS(id_sem);
     dades->cont = result; // Actualitzem la informació de la pilota.
     signalS(id_sem);
+    
   }
   return NULL;
 }
@@ -368,45 +367,38 @@ void * moure_pilota(void * cap) {
 
 void * mou_paleta_usuari(void * cap) {
     while ((dades->tec != TEC_RETURN) && (dades->cont == -1) && ((dades->moviments > 0) || dades->moviments == -1 || dades->moviments_infinits == 1)) {
-        /**
-         * Per no posar sempre el mateix comentari: 
-         *  // Bloqueja el semafor
-         * // Codi que volem protegir
-         *  // Desbloqueja el semafor
-        */
         win_retard(dades->retard);
-        waitS(id_sem);
+        waitS(id_sem); // Tanca semafor
         dades->tec = win_gettec();
-        signalS(id_sem);
+        signalS(id_sem); // Obre semafor
         if (dades->tec != 0) {
-          waitS(id_sem);
+          waitS(id_sem); // Tanca semafor
           if ((dades->tec == TEC_AVALL) && (win_quincar(ipu_pf+dades->l_pal,ipu_pc) == ' '))
           {
-              signalS(id_sem);
-              waitS(id_sem);
               win_escricar(ipu_pf,ipu_pc,' ',NO_INV);	   /* esborra primer bloc */
-              signalS(id_sem);
+              
               ipu_pf++;					   /* actualitza posicio */
-              waitS(id_sem);
+              
               win_escricar(ipu_pf+dades->l_pal-1,ipu_pc,'0',INVERS); /* impri. ultim bloc */
-              signalS(id_sem);
+              
               if (dades->moviments > 0) dades->moviments--;    /* he fet un moviment de la paleta */
               
           }
-          signalS(id_sem);
-          waitS(id_sem);
+          
+          
           if ((dades->tec == TEC_AMUNT) && (win_quincar(ipu_pf-1,ipu_pc) == ' '))
           {
-              signalS(id_sem);
-              waitS(id_sem);
+              
+              
               win_escricar(ipu_pf+dades->l_pal-1,ipu_pc,' ',NO_INV); /* esborra ultim bloc */
-              signalS(id_sem);
+              
               ipu_pf--;					    /* actualitza posicio */
-              waitS(id_sem);
+              
               win_escricar(ipu_pf,ipu_pc,'0',INVERS);	    /* imprimeix primer bloc */
               if (dades->moviments > 0) dades->moviments--;    /* he fet un moviment de la paleta */
-              signalS(id_sem);
+              
           }
+          signalS(id_sem); // Obre semafor
         }
     }
     return NULL;
@@ -432,22 +424,23 @@ void *mostra_informacio() {
       if(dades->moviments_infinits == 0) {
         sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, MF: \'%d\', MR: \'%d\' T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, dades->moviments_inicials - dades->moviments, dades->moviments, minuts, segons);
          // Bloquejem el semafor perque anem a escriure en pantalla.
-         waitS(id_sem);
+         
         win_escristr(strin);
          // Desbloquejem el semafor.
-         signalS(id_sem);
+         
       } else {
         sprintf(strin,"Tecles: Amunt: \'%c\', Avall: \'%c\', RETURN-> sortir, MF: \'%d\', MR: INF T:\'%d:%d\'",TEC_AMUNT, TEC_AVALL, dades->moviments_inicials - dades->moviments, minuts, segons);
          // Bloquejem el semafor perque anem a escriure en pantalla.
-         waitS(id_sem);
+         
         win_escristr(strin);
          // Desbloquejem el semafor.
-         signalS(id_sem);
+         
       }
 
       if (dades->tec == TEC_ESPAI) {
         dades->tec = 0; 
-        //waitS(id_sem); // PREGUNTAR PROFESOR. 
+         // PREGUNTAR PROFESOR.
+        waitS(id_sem);
         while (dades->tec != TEC_ESPAI) {
           win_retard(dades->retard);
           time_t current_time = time(NULL);
@@ -463,7 +456,7 @@ void *mostra_informacio() {
             win_escristr(strin);
           }
         }
-        //signalS(id_sem);  
+        signalS(id_sem);
       }
     }
     return NULL;
@@ -512,7 +505,7 @@ int main(int n_args, const char *ll_args[])
     pthread_t thread_pilota, thread_paleta_usuari, thread_time_moviments;
     pthread_t thread_actualizar_pantalla;
     // Crear el semafor
-    id_sem = ini_sem(1); // Creem el semafor inicialment obert. 
+    id_sem = ini_sem(1); // Creem el semafor inicialment obert.
     
     // Crear els fils
     pthread_create(&thread_pilota, NULL, moure_pilota, NULL);
@@ -535,7 +528,7 @@ int main(int n_args, const char *ll_args[])
     sprintf(id_shm_matrizMovimientosP_str, "%d", id_shm_matrizMovimientosP);
     sprintf(id_shm_retwin_str, "%d", id_shm_retwin);
     char index_str[12];
-    char id_sem_str[32]; // String id del semafor. 
+    char id_sem_str[32]; // String id del semafor.
     sprintf(id_sem_str, "%d", id_sem);
 
     for (int i = 0; i < n_pal; i++)
