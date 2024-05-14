@@ -63,6 +63,7 @@
 #include <pthread.h> // llibreria pthread.
 #include <time.h> // Llibreria per al time del joc
 #include "semafor.h"
+#include "missatge.h"
 
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -134,7 +135,7 @@ int* matrizMovimientosPaletas;
 int id_shm_retwin;
 void* shared_mem_retwin;
 
-int id_sem; 
+int id_sem, id_bustia;
 
 /* funcio per realitzar la carrega dels parametres de joc emmagatzemats */
 /* dins un fitxer de text, el nom del qual es passa per referencia en   */
@@ -300,6 +301,9 @@ void * moure_pilota(void * cap) {
       {
         
         rv = win_quincar(f_h, ipil_pc);    /* veure si hi ha algun obstacle */
+        if (rv > 0 && rv <= NUMMAXPALETAS) {
+          sprintf(stdout, "choque por vertical");
+        }
         
         if (rv != ' ')          /* si no hi ha res */
         {
@@ -312,6 +316,10 @@ void * moure_pilota(void * cap) {
         
         rh = win_quincar(ipil_pf, c_h);    /* veure si hi ha algun obstacle */
         
+        if (rh > 0 && rh <= NUMMAXPALETAS) {
+          sprintf(stdout, "choque por horizontal");
+        }
+        
         if (rh != ' ')          /* si no hi ha res */
         {
           pil_vc = -pil_vc;       /* canvia velocitat horitzontal */
@@ -322,6 +330,9 @@ void * moure_pilota(void * cap) {
       {
         
         rd = win_quincar(f_h, c_h);
+        if (rd > 0 && rd <= NUMMAXPALETAS) {
+          sprintf(stdout, "choque por diagonal");
+        }
         
         if (rd != ' ')              /* si no hi ha obstacle */
         {
@@ -506,6 +517,9 @@ int main(int n_args, const char *ll_args[])
     pthread_t thread_actualizar_pantalla;
     // Crear el semafor
     id_sem = ini_sem(1); // Creem el semafor inicialment obert.
+
+    // Crear bustia
+    id_bustia = ini_mis();
     
     // Crear els fils
     pthread_create(&thread_pilota, NULL, moure_pilota, NULL);
@@ -530,13 +544,15 @@ int main(int n_args, const char *ll_args[])
     char index_str[12];
     char id_sem_str[32]; // String id del semafor.
     sprintf(id_sem_str, "%d", id_sem);
+    char id_bustia_str[32];
+
 
     for (int i = 0; i < n_pal; i++)
     {
       tpid[i] = fork(); // Creem el proces fill.
       if(tpid[i] == (pid_t) 0) {
         sprintf(index_str, "%d", i); // Convertim l'index a string.
-        execlp("./pal_ord4", "./pal_ord4", id_shm_str, id_shm_matrizMovimientosP_str, id_shm_matrizPaletas_str, index_str, id_shm_retwin_str, id_sem_str, (char*)0); // Creem el proces fill.
+        execlp("./pal_ord4", "./pal_ord4", id_shm_str, id_shm_matrizMovimientosP_str, id_shm_matrizPaletas_str, index_str, id_shm_retwin_str, id_sem_str, id_bustia_str, (char*)0); // Creem el proces fill.
         fprintf(stderr, "No se ha pogut crear els fils de la paleta del ordinador, error!");
         exit(0);
       }
