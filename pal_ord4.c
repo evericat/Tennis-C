@@ -10,26 +10,38 @@
 #include <stdbool.h>
 
 int id_bustia_pal, id_bustia_pare; // Variables globals.
-int revisar = 0;
+bool missatgeRebut = false;
+int id_sem, op, dir;
+
 
 /**
  * Funcio que comproba si rep un missatge en la bustia de la paleta per fer revisio.
 */
 void *comprobarMiss() {
+  int missatge;
   char mis[2];
-  int missatge; 
   while(1) {
     missatge = receiveM(id_bustia_pal, mis);
     if (missatge != 0) {
-      revisar = 1;
+      missatgeRebut = true;
       fprintf(stderr, "%c", mis[0]);
+
+      waitS(id_sem);
+      if (mis[0] == '1') {
+        dir = 1;
+        op = 1;
+      }
+      if (mis[0] == '2') {
+        dir = 2;
+        op = -1;
+      }
+      signalS(id_sem);
+
     }
     missatge = 0;
   }
-  pthread_exit(0);
+  return 0;
 }
-
-
 
 
 /**
@@ -73,11 +85,11 @@ int main (int n_args, char *ll_args[]) {
     int f_h;
 
     // Preparem el semafor
-    int id_sem = atoi(ll_args[6]);
+    id_sem = atoi(ll_args[6]);
 
     // Preparem les busties
     id_bustia_pare = atoi(ll_args[7]);
-    id_bustia_pal = atoi(ll_args[8]);
+    id_bustia_pal = atoi(ll_args[8]); // PASAR A MAPMEM PARA QUE TENGAN TODOS LOS BUZONES.
 
     // Creem el thread que verifica si hi ha missatge
     pthread_t missatge;
@@ -93,6 +105,51 @@ int main (int n_args, char *ll_args[]) {
 
   while ((dades->tec != TEC_RETURN) && (dades->cont == -1) && ((dades->moviments > 0) || dades->moviments == -1 || dades->moviments_infinits == 1)) {
     win_retard(dades->retard * matrizPaletas[index].pal_ret);
+
+    if (missatgeRebut) {
+      waitS(id_sem);
+      if(dir == 1 || dir == 2) {
+        bool enviar = false;
+        int fila = matrizPaletas[index].ipo_pf;
+        int columna = matrizPaletas[index].ipo_pc;
+        int j = 0;
+
+        while(j < dades->l_pal && !enviar) {
+          if (matrizPaletas[index].ipo_pf == fila && matrizPaletas[index].ipo_pc == (columna+op)) {
+            enviar = true;
+          } else {
+            j++;
+          }
+        }
+
+        if (!enviar) {
+          if(dir == 1 && ((columna + 1) == (dades->n_col-1))) {
+            for (int i = 0; i < dades->l_pal; i++) {
+              win_escricar(fila, columna, ' ', NO_INV);
+              fila++;
+            }
+            signalS(id_sem);
+            pthread_cancel(missatge);
+            pthread_join(missatge, NULL);
+            exit(0);
+          } else {
+            for (int i = 0; i < dades->l_pal; i++)
+            {
+              win_escricar(fila, columna, ' ', NO_INV);
+              win_escricar(fila, (columna + op), '1' + index, INVERS);
+              fila++;
+            }
+            matrizPaletas[index].ipo_pc = columna + op;
+          }
+        } else {
+          char mis[2];
+          sprintf(mis, "%c", mis[0]);
+        }
+      }
+      signalS(id_sem);
+      missatgeRebut = false;
+    }
+
     f_h =matrizPaletas[index].po_pf + matrizPaletas[index].v_pal;		/* posicio hipotetica de la paleta */
     if (f_h != matrizPaletas[index].ipo_pf)	/* si pos. hipotetica no coincideix amb pos. actual */
     {

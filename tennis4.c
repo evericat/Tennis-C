@@ -136,6 +136,7 @@ int id_shm_retwin;
 void* shared_mem_retwin;
 
 int id_sem, id_main;
+int id_sem_rebot;
 int busties_pal[NUMMAXPALETAS];
 char busties_pal_str[32][NUMMAXPALETAS];
 int bustia_main;
@@ -306,11 +307,6 @@ void * moure_pilota(void * cap) {
       {
         
         rv = win_quincar(f_h, ipil_pc);    /* veure si hi ha algun obstacle */
-        if (rv > '0' && rv <= '9') {
-          sprintf(mis, "%c",rv);
-          //fprintf(stderr, "%c", rv);
-          sendM(busties_pal[(int) rv - 48], mis, 2);
-        }
         
         if (rv != ' ')          /* si no hi ha res */
         {
@@ -323,33 +319,43 @@ void * moure_pilota(void * cap) {
         
         rh = win_quincar(ipil_pf, c_h);    /* veure si hi ha algun obstacle */
         
-        if (rh > '0' && rh <= '9') {
-          sprintf(mis, "%c", rh);
-          //fprintf(stderr, "%d", rh);
-          sendM(busties_pal[(int) rh - 48], mis, 2);
-        }
+        
         
         if (rh != ' ')          /* si no hi ha res */
         {
           pil_vc = -pil_vc;       /* canvia velocitat horitzontal */
           c_h = pil_pc + pil_vc;  /* actualitza posicio hipotetica */
+
+          if(rh != '+' && rh != '0') {
+            if(c_h < ipil_pc) {
+              sprintf(mis, "%c", '1');
+            } else if (c_h > ipil_pc) {
+              sprintf(mis, "%c", '2');
+            }
+            sendM(busties_pal[(int) rh - 48], mis, 2);
+          }
         }
       }
       if ((f_h != ipil_pf) && (c_h != ipil_pc))    /* provar rebot diagonal */
       {
         
         rd = win_quincar(f_h, c_h);
-        if (rd > '0' && rd <= '9') {
-          sprintf(mis, "%c", rd);
-          //fprintf(stderr, "%d", rd);
-          sendM(busties_pal[(int) rd - 48], mis, 2);
-        }
         
         if (rd != ' ')              /* si no hi ha obstacle */
         {
           pil_vf = -pil_vf; pil_vc = -pil_vc;    /* canvia velocitats */
           f_h = pil_pf + pil_vf;
           c_h = pil_pc + pil_vc;      /* actualitza posicio entera */
+
+          if(rd != '+' && rd != '0') {
+            if(c_h < ipil_pc || f_h < ipil_pf) {
+              sprintf(mis, "%c", '1');
+            } else if (c_h > ipil_pc || f_h > ipil_pf) {
+              sprintf(mis, "%c", '2');
+            }
+            sendM(busties_pal[(int) rh - 48], mis, 2);
+          }
+
         }
       }
       
