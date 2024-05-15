@@ -139,7 +139,6 @@ int id_sem, id_main;
 int id_sem_rebot;
 int mem_busties_pal;
 int *p_mem_busties_pal;
-char busties_pal_str[32][NUMMAXPALETAS];
 int bustia_main;
 
 /* funcio per realitzar la carrega dels parametres de joc emmagatzemats */
