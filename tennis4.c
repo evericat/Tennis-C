@@ -266,8 +266,10 @@ int inicialitza_joc(void)
     matrizPaletas[i].po_pf = matrizPaletas[i].ipo_pf; /* fixar valor real paleta ordinador */
   }
   while (win_quincar(ipil_pf, ipil_pc) != ' ') /* buscar posicio buida per la pilota */
-  { ipil_pf = (rand() % (dades->n_fil-4)) + 2;
-    ipil_pc = (rand() % (dades->n_col-4)) + 2;
+  { 
+    //ipil_pf = (rand() % (dades->n_fil-4)) + 2;
+    //ipil_pc = (rand() % (dades->n_col-4)) + 2;
+    ipil_pc--;
   }
   pil_pf = ipil_pf; pil_pc = ipil_pc;	/* fixar valor real posicio pilota */
   win_escricar(ipil_pf, ipil_pc, '.',INVERS);	/* dibuix inicial pilota */
@@ -300,12 +302,11 @@ void * moure_pilota(void * cap) {
     c_h = pil_pc + pil_vc;
     result = -1;        /* inicialment suposem que la pilota no surt */
     rh = rv = rd = pd = ' ';
-    waitS(id_sem);
     if ((f_h != ipil_pf) || (c_h != ipil_pc))
     {       /* si posicio hipotetica no coincideix amb la pos. actual */
+      waitS(id_sem);
       if (f_h != ipil_pf)     /* provar rebot vertical */
       {
-        
         rv = win_quincar(f_h, ipil_pc);    /* veure si hi ha algun obstacle */
         
         if (rv != ' ')          /* si no hi ha res */
@@ -324,16 +325,16 @@ void * moure_pilota(void * cap) {
         if (rh != ' ')          /* si no hi ha res */
         {
           pil_vc = -pil_vc;       /* canvia velocitat horitzontal */
-          c_h = pil_pc + pil_vc;  /* actualitza posicio hipotetica */
-
+          
           if(rh != '+' && rh != '0') {
-            if(c_h < ipil_pc) {
+            if(c_h > ipil_pc) {
               sprintf(mis, "%c", '1');
-            } else if (c_h > ipil_pc) {
+            } else if (c_h < ipil_pc) {
               sprintf(mis, "%c", '2');
             }
             sendM(p_mem_busties_pal[(int) rh - 49], mis, 2); // rh - 49 ja que convertim el codi ascii a integer y, les paletes van de 0 a 8. 
           }
+          c_h = pil_pc + pil_vc;  /* actualitza posicio hipotetica */
         }
       }
       if ((f_h != ipil_pf) && (c_h != ipil_pc))    /* provar rebot diagonal */
@@ -343,19 +344,17 @@ void * moure_pilota(void * cap) {
         
         if (rd != ' ')              /* si no hi ha obstacle */
         {
-          pil_vf = -pil_vf; pil_vc = -pil_vc;    /* canvia velocitats */
-          f_h = pil_pf + pil_vf;
-          c_h = pil_pc + pil_vc;      /* actualitza posicio entera */
-
           if(rd != '+' && rd != '0') {
-            if(c_h < ipil_pc || f_h < ipil_pf) {
-              sprintf(mis, "%c", '1');
-            } else if (c_h > ipil_pc || f_h > ipil_pf) {
-              sprintf(mis, "%c", '2');
+            if((c_h > ipil_pc && f_h > ipil_pf)||(c_h > ipil_pc && f_h < ipil_pf)){
+              sprintf(mis,"%c",'1');
+            }else if((c_h < ipil_pc && f_h < ipil_pf)||(c_h < ipil_pc && f_h > ipil_pf)){
+              sprintf(mis,"%c",'2');
             }
             sendM(p_mem_busties_pal[(int) rd - 49], mis, 2); // rh - 49 ja que convertim el codi ascii a integer y, les paletes van de 0 a 8. 
           }
-
+          pil_vf = -pil_vf; pil_vc = -pil_vc;    /* canvia velocitats */
+          f_h = pil_pf + pil_vf;
+          c_h = pil_pc + pil_vc;      /* actualitza posicio entera */
         }
       }
       

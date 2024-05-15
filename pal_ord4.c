@@ -110,11 +110,11 @@ int main (int n_args, char *ll_args[]) {
         int columna = matrizPaletas[numeroPaleta].ipo_pc;
         int j = 0;
 
-        while(j < dades->l_pal && !enviar) { // Mirem si tenim alguna paleta al lateral on es va a fer el moviment
-          if (matrizPaletas[j].ipo_pf == fila && matrizPaletas[j].ipo_pc == (columna+op)) {
+        for(int i = 0; i < dades->l_pal && !enviar; i++) {
+          int rh = win_quincar(fila+i,(columna + op));
+          if(rh != ' ' && rh != '+') {
             enviar = true;
-          } else {
-            j++; // J es la paleta en si, no un index, es a dir, mirem si la paleta 0 1 2 3 N esta al nostre lateral pegada a la que estem revisant. 
+            j = ((int)rh - 49);
           }
         }
 
