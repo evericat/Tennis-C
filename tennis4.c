@@ -137,7 +137,8 @@ void* shared_mem_retwin;
 
 int id_sem, id_main;
 int id_sem_rebot;
-int busties_pal[NUMMAXPALETAS];
+int mem_busties_pal;
+int *p_mem_busties_pal;
 char busties_pal_str[32][NUMMAXPALETAS];
 int bustia_main;
 
@@ -332,7 +333,7 @@ void * moure_pilota(void * cap) {
             } else if (c_h > ipil_pc) {
               sprintf(mis, "%c", '2');
             }
-            sendM(busties_pal[(int) rh - 48], mis, 2);
+            sendM(p_mem_busties_pal[(int) rh - 49], mis, 2); // rh - 49 ja que convertim el codi ascii a integer y, les paletes van de 0 a 8. 
           }
         }
       }
@@ -353,7 +354,7 @@ void * moure_pilota(void * cap) {
             } else if (c_h > ipil_pc || f_h > ipil_pf) {
               sprintf(mis, "%c", '2');
             }
-            sendM(busties_pal[(int) rh - 48], mis, 2);
+            sendM(p_mem_busties_pal[(int) rd - 49], mis, 2); // rh - 49 ja que convertim el codi ascii a integer y, les paletes van de 0 a 8. 
           }
 
         }
@@ -389,6 +390,7 @@ void * moure_pilota(void * cap) {
     signalS(id_sem);
     
   }
+
   return NULL;
 }
 
@@ -535,8 +537,16 @@ int main(int n_args, const char *ll_args[])
     // Crear el semafor
     id_sem = ini_sem(1); // Creem el semafor inicialment obert.
 
-    // Crear bustia
+    // Crear bustia main
     bustia_main = ini_mis();
+
+    // Crear busties paletes.
+    mem_busties_pal = ini_mem(sizeof(int[NUMMAXPALETAS]));
+    p_mem_busties_pal = map_mem(mem_busties_pal);
+    // Creem les busties de les paletes
+    for(int i = 0; i < n_pal; i++) {
+      p_mem_busties_pal[i] = ini_mis();
+    }
     
     // Crear els fils
     pthread_create(&thread_pilota, NULL, moure_pilota, NULL);
@@ -563,18 +573,11 @@ int main(int n_args, const char *ll_args[])
     sprintf(id_sem_str, "%d", id_sem);
     char bustia_main_str[32];
     sprintf(bustia_main_str, "%d", bustia_main);
+    char mem_busties_str[32];
+    sprintf(mem_busties_str, "%i", mem_busties_pal);
 
 
-    // Creem les busties de les paletes
-    for(int i = 0; i < n_pal; i++) {
-      busties_pal[i] = ini_mis();
-    }
     
-    // Convertim les busties per pasarles als procesos 
-    for(int i = 0; i < n_pal; i++)
-    {
-      sprintf(busties_pal_str[i], "%d", busties_pal[i]);
-    }
 
     // Creamos los procesos. 
     for (int i = 0; i < n_pal; i++)
@@ -582,7 +585,7 @@ int main(int n_args, const char *ll_args[])
       tpid[i] = fork(); // Creem el proces fill.
       if(tpid[i] == (pid_t) 0) {
         sprintf(index_str, "%d", i); // Convertim l'index a string.
-        execlp("./pal_ord4", "./pal_ord4", id_shm_str, id_shm_matrizMovimientosP_str, id_shm_matrizPaletas_str, index_str, id_shm_retwin_str, id_sem_str, bustia_main_str, busties_pal_str[i], (char*)0); // Creem el proces fill.
+        execlp("./pal_ord4", "./pal_ord4", id_shm_str, id_shm_matrizMovimientosP_str, id_shm_matrizPaletas_str, index_str, id_shm_retwin_str, id_sem_str, bustia_main_str, mem_busties_str, (char*)0); // Creem el proces fill.
         fprintf(stderr, "No se ha pogut crear els fils de la paleta del ordinador, error!");
         exit(0);
       }
