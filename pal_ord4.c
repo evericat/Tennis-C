@@ -28,12 +28,12 @@ void *comprobarMiss() {
       missatgeRebut = true;
       waitS(id_sem);
       if (mis[0] == '1') {
-        dir = 1;
-        op = 1;
+        dir = 1; // derecha
+        op = 1; // Direccion del movimiento es decir col + op 
       }
       if (mis[0] == '2') {
-        dir = 2;
-        op = -1;
+        dir = 2; // izquierda
+        op = -1; // Direccion del movimiento es decir col + op 
       }
       signalS(id_sem);
     }
@@ -51,8 +51,8 @@ int main (int n_args, char *ll_args[]) {
     exit(EXIT_FAILURE);
   }
 
-    typedef struct {
-      int tec;
+    typedef struct { // Estructura de datos compartidos mediante un mapa de memoria. 
+      int tec; 
       int cont;
       int moviments;
       int moviments_inicials;
@@ -64,25 +64,26 @@ int main (int n_args, char *ll_args[]) {
     } DadesCompartides;
 
 
-    typedef struct {
+    typedef struct { // Estructura de datos compartidos por las paletas mediante un mapa de memoria. 
       int ipo_pf, ipo_pc;      	/* posicio del la paleta de l'ordinador */
       float v_pal;			/* velocitat de la paleta del programa */
       float pal_ret;			/* percentatge de retard de la paleta */
       float po_pf;	/* pos. vertical de la paleta de l'ordinador, en valor real */
     } Fila;
 
-    int id_shm = atoi(ll_args[1]);
-    int id_shm_matrizMovimientosP = atoi(ll_args[2]);
-    int id_shm_matrizPaletas = atoi(ll_args[3]);
+    // Obtenemos todos los punteros del mapeo de memoria. 
+    int id_mem_dadesCompartides = atoi(ll_args[1]);  
+    int id_mem_matrizMovimientosP = atoi(ll_args[2]);
+    int id_mem_matrizPaletas = atoi(ll_args[3]);
     numeroPaleta = atoi(ll_args[4]); // Índex de la paleta.
     int pWin = atoi(ll_args[5]);
     void *pWinP = map_mem(pWin);
-    DadesCompartides* dades = map_mem(id_shm);
-    int* matrizMovimientosPaletas = map_mem(id_shm_matrizMovimientosP);
-    Fila* matrizPaletas = map_mem(id_shm_matrizPaletas);
+    DadesCompartides* dades = map_mem(id_mem_dadesCompartides);
+    int* matrizMovimientosPaletas = map_mem(id_mem_matrizMovimientosP);
+    Fila* matrizPaletas = map_mem(id_mem_matrizPaletas);
     int f_h;
 
-    // Preparem el semafor
+    // Preparem el semafor 
     id_sem = atoi(ll_args[6]);
 
     // Preparem les busties
@@ -94,13 +95,12 @@ int main (int n_args, char *ll_args[]) {
     pthread_t missatge;
     pthread_create(&missatge, NULL, comprobarMiss, NULL);
   
-  // Fem un winset 
-
-  win_set(pWinP, dades->n_fil, dades->n_col); // Posem la escritura de pantalla també per a les paletes del ordinador. 
+  // Fem un winset per permetre la escritura de pantalla per a les paletes 
+  win_set(pWinP, dades->n_fil, dades->n_col);  
 
   // INICI CODI DE PALETES.
   while ((dades->tec != TEC_RETURN) && (dades->cont == -1) && ((dades->moviments > 0) || dades->moviments == -1 || dades->moviments_infinits == 1)) {
-    win_retard(dades->retard * matrizPaletas[numeroPaleta].pal_ret);
+    win_retard(dades->retard * matrizPaletas[numeroPaleta].pal_ret); // Retard de moviment 
 
     if (missatgeRebut) { // Verifiquem si hem rebut un missatge. 
       waitS(id_sem); // Esperem al semafor. 
@@ -139,12 +139,12 @@ int main (int n_args, char *ll_args[]) {
           }
         } else { // Si es te que enviar, enviem un misatge a la altra paleta per fer el desplazament.
           char miss[2];
-          sprintf(miss, "%c", mis[0]);
-          sendM(p_mem_busties[j], miss, 2);
+          sprintf(miss, "%c", mis[0]); // Preparem el missatge, en resum miss_enviar = mis rebut. 
+          sendM(p_mem_busties[j], miss, 2); // Enviem el missatge. 
         }
       }
-      signalS(id_sem);
-      missatgeRebut = false;
+      signalS(id_sem); // Enviem señal al semafor
+      missatgeRebut = false; // Tornem a dir que no hem rebut cap missatge. 
     }
 
     f_h =matrizPaletas[numeroPaleta].po_pf + matrizPaletas[numeroPaleta].v_pal;		/* posicio hipotetica de la paleta */
@@ -156,7 +156,6 @@ int main (int n_args, char *ll_args[]) {
         
         if (win_quincar(f_h+dades->l_pal-1,matrizPaletas[numeroPaleta].ipo_pc) == ' ')   /* si no hi ha obstacle */
         {
-          
           
           win_escricar(matrizPaletas[numeroPaleta].ipo_pf,matrizPaletas[numeroPaleta].ipo_pc,' ',NO_INV);      /* esborra primer bloc */
           
@@ -180,7 +179,6 @@ int main (int n_args, char *ll_args[]) {
     if (win_quincar(f_h,matrizPaletas[numeroPaleta].ipo_pc) == ' ')        /* si no hi ha obstacle */
     {
       
-      
       win_escricar(matrizPaletas[numeroPaleta].ipo_pf+dades->l_pal-1,matrizPaletas[numeroPaleta].ipo_pc,' ',NO_INV); /* esbo. ultim bloc */
       
       matrizPaletas[numeroPaleta].po_pf += matrizPaletas[numeroPaleta].v_pal; matrizPaletas[numeroPaleta].ipo_pf = matrizPaletas[numeroPaleta].po_pf;		/* actualitza posicio */
@@ -193,7 +191,6 @@ int main (int n_args, char *ll_args[]) {
     }
     else		/* si hi ha obstacle, canvia el sentit del moviment */
     {
-      
       matrizPaletas[numeroPaleta].v_pal = -matrizPaletas[numeroPaleta].v_pal;
     }
     signalS(id_sem);
