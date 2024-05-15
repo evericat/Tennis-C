@@ -469,7 +469,6 @@ void *mostra_informacio() {
 
       if (dades->tec == TEC_ESPAI) {
         dades->tec = 0; 
-         // PREGUNTAR PROFESOR.
         waitS(id_sem);
         while (dades->tec != TEC_ESPAI) {
           win_retard(dades->retard);
