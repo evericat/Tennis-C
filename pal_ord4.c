@@ -93,15 +93,12 @@ int main (int n_args, char *ll_args[]) {
     // Creem el thread que verifica si hi ha missatge
     pthread_t missatge;
     pthread_create(&missatge, NULL, comprobarMiss, NULL);
-    
-
-
- /* char rh,rv,rd; */
   
   // Fem un winset 
 
   win_set(pWinP, dades->n_fil, dades->n_col); // Posem la escritura de pantalla també per a les paletes del ordinador. 
 
+  // INICI CODI DE PALETES.
   while ((dades->tec != TEC_RETURN) && (dades->cont == -1) && ((dades->moviments > 0) || dades->moviments == -1 || dades->moviments_infinits == 1)) {
     win_retard(dades->retard * matrizPaletas[numeroPaleta].pal_ret);
 
