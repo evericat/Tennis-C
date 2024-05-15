@@ -117,7 +117,7 @@ typedef struct {
 } DadesCompartides;
 
 DadesCompartides *dades; // Les dades esencials del joc
-int id_shm; // id de direcció de la memoria 
+int id_mem_dadesCompartides; // id de direcció de la memoria 
 
 typedef struct {
     int ipo_pf, ipo_pc;      	/* posicio del la paleta de l'ordinador */
@@ -126,13 +126,13 @@ typedef struct {
     float po_pf;	/* pos. vertical de la paleta de l'ordinador, en valor real */
 } Fila;
 
-int id_shm_matrizPaletas; // Identificador de memoria la matriz de paletas. 
+int id_mem_matrizPaletas; // Identificador de memoria la matriz de paletas. 
 Fila* matrizPaletas; 
 
-int id_shm_matrizMovimientosP;
+int id_mem_matrizMovimientosP;
 int* matrizMovimientosPaletas;
 
-int id_shm_retwin;
+int id_mem_retwin;
 void* shared_mem_retwin;
 
 int id_sem, id_main;
@@ -239,8 +239,8 @@ int inicialitza_joc(void)
      return(retwin);
   }
 
-  id_shm_retwin = ini_mem(retwin); // Inicialitzem la memoria compartida
-  shared_mem_retwin = map_mem(id_shm_retwin); // Mapejem la memoria compartida
+  id_mem_retwin = ini_mem(retwin); // Inicialitzem la memoria compartida
+  shared_mem_retwin = map_mem(id_mem_retwin); // Mapejem la memoria compartida
   win_set(shared_mem_retwin, dades->n_fil, dades->n_col); // Guardem la finestra en la memoria compartida
   
   
@@ -501,15 +501,15 @@ int main(int n_args, const char *ll_args[])
   	exit(1);
   }
   // Nomes carreguem les zones de memoria si tot ha anat be al inici. 
-  id_shm = ini_mem(sizeof(DadesCompartides)); // Inicialitzem la memoria compartida
-  dades = map_mem(id_shm); // Mapejem la memoria compartida
+  id_mem_dadesCompartides = ini_mem(sizeof(DadesCompartides)); // Inicialitzem la memoria compartida
+  dades = map_mem(id_mem_dadesCompartides); // Mapejem la memoria compartida
   dades->cont = -1; // Inicializamos el contador a -1. 
 
-  id_shm_matrizPaletas = ini_mem(sizeof(Fila) * NUMMAXPALETAS); // Inicialitzem la memoria compartida
-  matrizPaletas = map_mem(id_shm_matrizPaletas); // Mapejem la memoria compartida
+  id_mem_matrizPaletas = ini_mem(sizeof(Fila) * NUMMAXPALETAS); // Inicialitzem la memoria compartida
+  matrizPaletas = map_mem(id_mem_matrizPaletas); // Mapejem la memoria compartida
 
-  id_shm_matrizMovimientosP = ini_mem(sizeof(int) * NUMMAXPALETAS); // Inicialitzem la memoria compartida
-  matrizMovimientosPaletas = map_mem(id_shm_matrizMovimientosP); // Mapejem la memoria compartida
+  id_mem_matrizMovimientosP = ini_mem(sizeof(int) * NUMMAXPALETAS); // Inicialitzem la memoria compartida
+  matrizMovimientosPaletas = map_mem(id_mem_matrizMovimientosP); // Mapejem la memoria compartida
   /**
    * Ara la carrega de parametres fara us de les 2 noves zones de memoria indicades, si fa el cas. Per als procesos. 
   */
@@ -560,14 +560,14 @@ int main(int n_args, const char *ll_args[])
     }
 
     // Conversio de IDs a String. 
-    char id_shm_str[32]; 
-    char id_shm_matrizPaletas_str[32];
-    char id_shm_matrizMovimientosP_str[32];
-    char id_shm_retwin_str[32];
-    sprintf(id_shm_str, "%d", id_shm);
-    sprintf(id_shm_matrizPaletas_str, "%d", id_shm_matrizPaletas); 
-    sprintf(id_shm_matrizMovimientosP_str, "%d", id_shm_matrizMovimientosP);
-    sprintf(id_shm_retwin_str, "%d", id_shm_retwin);
+    char id_mem_dadesCompartides_str[32]; 
+    char id_mem_matrizPaletas_str[32];
+    char id_mem_matrizMovimientosP_str[32];
+    char id_mem_retwin_str[32];
+    sprintf(id_mem_dadesCompartides_str, "%d", id_mem_dadesCompartides);
+    sprintf(id_mem_matrizPaletas_str, "%d", id_mem_matrizPaletas); 
+    sprintf(id_mem_matrizMovimientosP_str, "%d", id_mem_matrizMovimientosP);
+    sprintf(id_mem_retwin_str, "%d", id_mem_retwin);
     char index_str[12];
     char id_sem_str[32]; // String id del semafor.
     sprintf(id_sem_str, "%d", id_sem);
@@ -585,7 +585,7 @@ int main(int n_args, const char *ll_args[])
       tpid[i] = fork(); // Creem el proces fill.
       if(tpid[i] == (pid_t) 0) {
         sprintf(index_str, "%d", i); // Convertim l'index a string.
-        execlp("./pal_ord4", "./pal_ord4", id_shm_str, id_shm_matrizMovimientosP_str, id_shm_matrizPaletas_str, index_str, id_shm_retwin_str, id_sem_str, bustia_main_str, mem_busties_str, (char*)0); // Creem el proces fill.
+        execlp("./pal_ord4", "./pal_ord4", id_mem_dadesCompartides_str, id_mem_matrizMovimientosP_str, id_mem_matrizPaletas_str, index_str, id_mem_retwin_str, id_sem_str, bustia_main_str, mem_busties_str, (char*)0); // Creem el proces fill.
         fprintf(stderr, "No se ha pogut crear els fils de la paleta del ordinador, error!");
         exit(0);
       }
@@ -606,10 +606,10 @@ int main(int n_args, const char *ll_args[])
     elim_sem(id_sem);
 
       // Destruim les zones de memoria y busties
-    elim_mem(id_shm);
-    elim_mem(id_shm_matrizMovimientosP);
-    elim_mem(id_shm_matrizPaletas);
-    elim_mem(id_shm_retwin);
+    elim_mem(id_mem_dadesCompartides); // mem dades compartides
+    elim_mem(id_mem_matrizMovimientosP);
+    elim_mem(id_mem_matrizPaletas);
+    elim_mem(id_mem_retwin);
 
     elim_mis(bustia_main);
     for (int i = 0; i < n_pal; i++)
